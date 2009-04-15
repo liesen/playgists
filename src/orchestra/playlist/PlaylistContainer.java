@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 /**
  * Base implementation of an playlist container.
  * 
@@ -33,6 +31,11 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
     return owner;
   }
   
+  /**
+   * Returns the number of playlists.
+   * 
+   * @return
+   */
   public int size() {
     return playlists.size();
   }
@@ -48,7 +51,7 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
   }
   
   public Playlist createPlaylist(String name) throws Exception {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
   
   public Playlist getPlaylist(String id) {

@@ -10,7 +10,7 @@ import de.felixbruns.jotify.media.Track;
 import de.felixbruns.jotify.util.Hex;
 
 public class Test {
-  public static String[] S = new String[] {
+  public static String[] tracks = new String[] {
     "241Oo8Eb4YoaL9mYS6VPHX",
     "2FcWWewZMPQ4xJx1JFOlAM",
     "0mdu7rRY16Kbn3zoqMyRPl",
@@ -26,7 +26,7 @@ public class Test {
     PlaylistContainer container = PlaygistContainer.open("liesen", new Repository(new File("/Users/liesen/playgists/.git")));
     Playlist pl = container.createPlaylist("Spring Ricco");
     
-    for (String s : S) {
+    for (String s : tracks) {
       Track tr = new Track(Hex.URIToId(s), null, null, null);
       pl.addTrack(tr);
     }

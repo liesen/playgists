@@ -1,11 +1,12 @@
 package orchestra;
 
-import java.io.File;
 import java.io.IOException;
 
 import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
-import orchestra.util.Git;
+
+import org.spearce.jgit.lib.Repository;
+
 import de.felixbruns.jotify.Jotify;
 
 public class Maestro extends Jotify {
@@ -19,10 +20,8 @@ public class Maestro extends Jotify {
     playlists = container;
   }
   
-  public static Maestro newInstance(String username) throws Exception {
-    final String playlistRootPath = "/tmp/orchestra";
-    Git git = new Git(new File(playlistRootPath), true);
-    PlaylistContainer playlists = PlaygistContainer.open(username, git);
+  public static Maestro newInstance(String username, Repository repo) throws Exception {
+    PlaylistContainer playlists = PlaygistContainer.open(username, repo);
     return new Maestro(playlists);
   }
   

@@ -18,8 +18,7 @@ import orchestra.playlist.PlaylistListener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spearce.jgit.lib.GitIndex;
-import org.spearce.jgit.lib.Repository;
+import org.spearce.jgit.lib.TreeEntry;
 
 import de.felixbruns.jotify.media.Track;
 
@@ -34,7 +33,9 @@ public class Playgist implements Playlist {
   private final Map<String, String> metadata;
 
   /** Path to playlist file on disk. */
-  private final GitIndex.Entry gitIndexEntry;
+  private TreeEntry treeEntry;
+  
+  private File absolutePath;
   
   private PlaylistListener listener;
 
@@ -42,9 +43,9 @@ public class Playgist implements Playlist {
 
   private boolean dirty;
 
-  private Playgist(GitIndex.Entry entry, List<Track> tracks, Map<String, String> metadata) {
+  private Playgist(File path, List<Track> tracks, Map<String, String> metadata) {
     this.metadata = metadata;
-    this.gitIndexEntry = entry;
+    this.absolutePath = path;
     this.tracks = new LinkedList<Track>(tracks);
     this.listener = null;
   }
@@ -57,24 +58,24 @@ public class Playgist implements Playlist {
    * @throws FileNotFoundException
    * @throws IOException
    */
-  public static Playgist open(Repository repo, GitIndex.Entry entry) throws FileNotFoundException, IOException {
-    File file = new File(repo.getWorkDir(), entry.getName());
+  public static Playgist open(File workDir, File entry) throws FileNotFoundException, IOException {
+    File file = new File(workDir, entry.getPath());
     BufferedReader reader = new BufferedReader(new FileReader(file));
     Map<String, String> metadata = new TreeMap<String, String>();
     List<Track> tracks = new LinkedList<Track>();
 
     for (String line; (line = reader.readLine()) != null;) {
       if (line.startsWith(METADATA_PREFIX)) {
-        parseMetadata(line, metadata);
+        parseMetadataLine(line, metadata);
       } else {
         tracks.add(new Track(line, null, null, null));
       }
     }
 
-    return new Playgist(entry, tracks, metadata);
+    return new Playgist(file.getAbsoluteFile(), tracks, metadata);
   }
 
-  private static void parseMetadata(String line, Map<String, String> metadata) throws IOException {
+  private static void parseMetadataLine(String line, Map<String, String> metadata) throws IOException {
     Properties props = new Properties();
     props.load(new StringReader(line.substring(METADATA_PREFIX.length())));
     log.info("Reading property line: {}", line);
@@ -150,12 +151,12 @@ public class Playgist implements Playlist {
   }
 
   public String getId() {
-    return gitIndexEntry.getName();
+    return absolutePath.getName();
   }
 
   /** Returns the location (on disk) for this gist. */
-  public GitIndex.Entry getIndexEntry() {
-    return gitIndexEntry;
+  public TreeEntry getTreeEntry() {
+    return treeEntry;
   }
 
   public Map<String, String> getMetadata() {
@@ -191,5 +192,9 @@ public class Playgist implements Playlist {
 
   public void setListener(PlaylistListener listener) {
     this.listener = listener;
+  }
+
+  public File getPath() {
+    return absolutePath;
   }
 }

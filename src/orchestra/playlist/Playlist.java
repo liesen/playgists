@@ -5,7 +5,6 @@ import java.util.List;
 import de.felixbruns.jotify.media.Track;
 
 public interface Playlist {
-
   public String getId();
 
   public String getName();

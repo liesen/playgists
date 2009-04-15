@@ -2,7 +2,6 @@ package orchestra.playlist;
 
 import java.util.List;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import de.felixbruns.jotify.media.Track;
 
 
@@ -73,10 +72,10 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist implemen
   }
 
   public Playlist setName(String name) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   public Playlist setOwner(String owner) {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 }
