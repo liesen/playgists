@@ -34,7 +34,7 @@ public class Playgist implements Playlist {
   /** Path to playlist file on disk. */
   public final File path;
   
-  private final PlaylistListener listener;
+  private PlaylistListener listener;
 
   private final LinkedList<Track> tracks;
 
@@ -188,5 +188,9 @@ public class Playgist implements Playlist {
 
   public Playlist setOwner(String owner) {
     throw new UnsupportedOperationException();
+  }
+
+  public void setListener(PlaylistListener listener) {
+    this.listener = listener;
   }
 }

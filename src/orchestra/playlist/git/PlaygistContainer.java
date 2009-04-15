@@ -46,8 +46,8 @@ public class PlaygistContainer extends PlaylistContainer {
     for (GitIndex.Entry entry : index.getMembers()) {
       try {
         Playgist gist = Playgist.open(new File(repo.getWorkDir(), entry.getName()));
-        addPlaylist(gist);
-        log.info("Added playlist: {}", gist.getName());
+        addPlaygist(gist);
+        log.info("Added playlist: {}", gist.getPath());
       } catch (IOException e) {
         log.info("Failed to open gist: {}", e.getMessage());
       }
@@ -56,11 +56,14 @@ public class PlaygistContainer extends PlaylistContainer {
 
   @Override
   public Playlist newPlaylist(String name) throws Exception {
+    GitIndex index = repo.getIndex();
     File absolutePath = new File(getOwnerRoot(), getNextHash());
     createFile(absolutePath);
+    index.add(repo.getWorkDir(), absolutePath);
     log.info("Created new playlist at {}", absolutePath);
     Playgist gist = Playgist.open(absolutePath);
     gist.setName(name);
+    index.write();
     addPlaygist(gist);
     return gist;
   }
@@ -93,6 +96,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws Exception
    */
   private void addPlaygist(Playgist gist) throws IOException {
+    gist.setListener(this);
     addPlaylist(gist);
   }
 
@@ -146,6 +150,7 @@ public class PlaygistContainer extends PlaylistContainer {
    */
   private void writeFile(Playgist gist) throws IOException {
     File path = gist.getPath();
+    log.info("Writing file {}", path);
 
     if (!path.exists()) {
       path.createNewFile();
