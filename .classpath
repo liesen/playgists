@@ -5,6 +5,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/Jotify"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-api-1.5.6.jar"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-simple-1.5.6.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/JGit"/>
+	<classpathentry kind="lib" path="/Users/liesen/code/sandbox/egit/jgit.jar" sourcepath="/Users/liesen/code/sandbox/egit/org.spearce.jgit/src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

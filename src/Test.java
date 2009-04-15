@@ -3,7 +3,9 @@ import java.io.File;
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
-import orchestra.util.Git;
+
+import org.spearce.jgit.lib.Repository;
+
 import de.felixbruns.jotify.media.Track;
 import de.felixbruns.jotify.util.Hex;
 
@@ -21,12 +23,13 @@ public class Test {
   };
   
   public static void main(String[] args) throws Exception {
-    PlaylistContainer container = PlaygistContainer.open("liesen", new Git(new File("/Users/liesen/.playgist"), true));
-    Playlist pl = container.newPlaylist("Spring Ricco");
+    PlaylistContainer container = PlaygistContainer.open("liesen", new Repository(new File("/Users/liesen/.playgist/.git")));
+    /* Playlist pl = container.newPlaylist("Spring Ricco");
     
     for (String s : S) {
       Track tr = new Track(Hex.URIToId(s), null, null, null);
       pl.addTrack(tr);
     }
+    */
   }
 }

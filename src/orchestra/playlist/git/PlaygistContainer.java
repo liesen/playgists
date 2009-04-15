@@ -2,7 +2,6 @@ package orchestra.playlist.git;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -13,10 +12,11 @@ import java.util.Map;
 
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
-import orchestra.util.Git;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spearce.jgit.lib.GitIndex;
+import org.spearce.jgit.lib.Repository;
 
 import de.felixbruns.jotify.media.Track;
 
@@ -25,45 +25,31 @@ public class PlaygistContainer extends PlaylistContainer {
 
   private final MessageDigest messageDigest;
 
-  private static final FileFilter PLAYGIST_FILE_FILTER = new FileFilter() {
-    private static final int FILENAME_LENGTH = 40; // SHA-1 "hash" length
+  private final Repository repo;
 
-    public boolean accept(File pathname) {
-      return pathname.isFile() && pathname.canRead()
-          && pathname.getName().length() == FILENAME_LENGTH;
-    }
-  };
-
-  private final Git git;
-
-  private PlaygistContainer(String owner, Git git, MessageDigest digest) {
+  private PlaygistContainer(String owner, Repository repo, MessageDigest digest) {
     super(owner);
-    this.git = git;
+    this.repo = repo;
     this.messageDigest = digest;
   }
 
-  public static PlaygistContainer open(String owner, Git git) throws Exception {
+  public static PlaygistContainer open(String owner, Repository repo) throws Exception {
     MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-    PlaygistContainer container = new PlaygistContainer(owner, git, sha1);
-    addPlaygistsRecursively(container, git.getRepositoryPath(), PLAYGIST_FILE_FILTER);
+    PlaygistContainer container = new PlaygistContainer(owner, repo, sha1);
+    container.readPlaylists();
     return container;
   }
-
-  private static void addPlaygistsRecursively(PlaygistContainer container, File pathname,
-      FileFilter filter) {
-    if (pathname.isDirectory()) {
-      for (File f : pathname.listFiles()) {
-        if (!f.getName().startsWith(".") && f.isDirectory()) {
-          addPlaygistsRecursively(container, f, filter);
-        } else if (filter.accept(f)) {
-          try {
-            Playgist gist = Playgist.open(f);
-            container.addPlaylist(gist);
-            log.info("Adding {}", gist.getId());
-          } catch (Exception e) {
-            log.warn("Failed to open gist", e);
-          }
-        }
+  
+  private void readPlaylists() throws IOException {
+    GitIndex index = repo.getIndex();
+    
+    for (GitIndex.Entry entry : index.getMembers()) {
+      try {
+        Playgist gist = Playgist.open(new File(repo.getWorkDir(), entry.getName()));
+        addPlaylist(gist);
+        log.info("Added playlist: {}", gist.getName());
+      } catch (IOException e) {
+        log.info("Failed to open gist: {}", e.getMessage());
       }
     }
   }
@@ -107,8 +93,6 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws Exception
    */
   private void addPlaygist(Playgist gist) throws IOException {
-    git.add(new File(getOwner(), gist.getId()));
-    git.commit("added playlist: " + gist.getName());
     addPlaylist(gist);
   }
 
@@ -118,7 +102,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * @return
    */
   private File getOwnerRoot() {
-    return new File(git.getRepositoryPath(), getOwner());
+    return new File(repo.getWorkDir(), getOwner());
   }
 
   /**

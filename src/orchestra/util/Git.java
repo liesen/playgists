@@ -9,9 +9,13 @@ import java.io.Writer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spearce.jgit.lib.GitIndex;
+import org.spearce.jgit.lib.Repository;
 
 public class Git {
   private static final Logger log = LoggerFactory.getLogger(Git.class);
+  
+  private final Repository repository;
   
   private final ProcessBuilder processBuilder;
   
@@ -19,12 +23,15 @@ public class Git {
   
   /**
    * @param root
+   * @throws IOException 
    */
-  public Git(File root, boolean shell) {
+  public Git(File root, boolean shell) throws IOException {
     if (!root.isAbsolute()) {
       throw new IllegalArgumentException("root must be absolute");
     }
     
+    repository = new Repository(root);
+    getFiles();
     execShell = shell;
     processBuilder = new ProcessBuilder().directory(root).redirectErrorStream(true);
   }
@@ -70,6 +77,15 @@ public class Git {
     if (exit != 0) {
       log.info("git exited: {}", exit);
       throw new IOException(out.toString());
+    }
+  }
+  
+  public void getFiles() throws IOException {
+    log.info("Reading git index");
+    GitIndex index = repository.getIndex();
+    
+    for (GitIndex.Entry entry : index.getMembers()) {
+      log.info("\t{}", entry.getName());
     }
   }
   
