@@ -23,12 +23,14 @@ public class Test {
   };
   
   public static void main(String[] args) throws Exception {
-    PlaylistContainer container = PlaygistContainer.open("liesen", new Repository(new File("/Users/liesen/.playgist/.git")));
-    Playlist pl = container.newPlaylist("Spring Ricco");
+    PlaylistContainer container = PlaygistContainer.open("liesen", new Repository(new File("/Users/liesen/playgists/.git")));
+    Playlist pl = container.createPlaylist("Spring Ricco");
     
     for (String s : S) {
       Track tr = new Track(Hex.URIToId(s), null, null, null);
       pl.addTrack(tr);
     }
+    
+    pl.setName("Florence Valentin - Spring Ricco");
   }
 }

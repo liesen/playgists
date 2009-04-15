@@ -15,8 +15,17 @@ import orchestra.playlist.PlaylistContainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spearce.jgit.lib.Commit;
+import org.spearce.jgit.lib.Constants;
+import org.spearce.jgit.lib.FileTreeEntry;
 import org.spearce.jgit.lib.GitIndex;
+import org.spearce.jgit.lib.ObjectId;
+import org.spearce.jgit.lib.ObjectWriter;
+import org.spearce.jgit.lib.PersonIdent;
+import org.spearce.jgit.lib.RefUpdate;
 import org.spearce.jgit.lib.Repository;
+import org.spearce.jgit.lib.Tree;
+import org.spearce.jgit.lib.TreeEntry;
 
 import de.felixbruns.jotify.media.Track;
 
@@ -45,9 +54,9 @@ public class PlaygistContainer extends PlaylistContainer {
     
     for (GitIndex.Entry entry : index.getMembers()) {
       try {
-        Playgist gist = Playgist.open(new File(repo.getWorkDir(), entry.getName()));
+        Playgist gist = Playgist.open(repo, entry);
         addPlaygist(gist);
-        log.info("Added playlist: {}", gist.getPath());
+        log.info("Added playlist: {}", gist.getIndexEntry().getName());
       } catch (IOException e) {
         log.info("Failed to open gist: {}", e.getMessage());
       }
@@ -55,15 +64,27 @@ public class PlaygistContainer extends PlaylistContainer {
   }
 
   @Override
-  public Playlist newPlaylist(String name) throws Exception {
-    GitIndex index = repo.getIndex();
+  public Playlist createPlaylist(String name) throws Exception {
     File absolutePath = new File(getOwnerRoot(), getNextHash());
     createFile(absolutePath);
-    index.add(repo.getWorkDir(), absolutePath);
-    log.info("Created new playlist at {}", absolutePath);
-    Playgist gist = Playgist.open(absolutePath);
-    gist.setName(name);
+
+    GitIndex index = repo.getIndex();
+    GitIndex.Entry indexEntry = index.add(repo.getWorkDir(), absolutePath);
+    indexEntry.setAssumeValid(false);
     index.write();
+
+    Tree head = repo.mapTree(Constants.HEAD);
+    
+    if (head == null) {
+      head = new Tree(repo);
+    }
+    
+    FileTreeEntry treeEntry = head.addFile(indexEntry.getName());
+    treeEntry.setId(indexEntry.getObjectId());
+    
+    log.info("Created new playlist at {}", absolutePath);
+    Playgist gist = Playgist.open(repo, indexEntry);
+    gist.setName(name);
     addPlaygist(gist);
     return gist;
   }
@@ -71,6 +92,9 @@ public class PlaygistContainer extends PlaylistContainer {
   // Tries harder than plain Java to create the file, /absoluteFile/.
   private void createFile(File absolutePath) throws IOException {
     log.info("Attempting to create {}", absolutePath);
+    if (absolutePath.exists()) {
+      return;
+    }
 
     try {
       if (absolutePath.createNewFile()) {
@@ -79,7 +103,7 @@ public class PlaygistContainer extends PlaylistContainer {
     } catch (IOException e) {
       // I want NIO.2
     }
-
+    
     if (!absolutePath.getParentFile().mkdirs()) {
       throw new IOException("Failed to create directories for " + absolutePath);
     }
@@ -108,6 +132,10 @@ public class PlaygistContainer extends PlaylistContainer {
   private File getOwnerRoot() {
     return new File(repo.getWorkDir(), getOwner());
   }
+  
+  private PersonIdent getOwnerIdent() {
+    return new PersonIdent(repo);
+  }
 
   /**
    * @return
@@ -122,10 +150,73 @@ public class PlaygistContainer extends PlaylistContainer {
 
   @Override
   public void hasChanged(Playlist playlist) {
-    super.hasChanged(playlist);
+    if (playlist == null) {
+      log.info("null playlist hasChanged");
+      return;
+    }
 
     if (playlist instanceof Playgist) {
-      tryWriteFile((Playgist) playlist);
+      Playgist gist = (Playgist) playlist;
+      tryWriteFile(gist);
+      
+      try {
+        Tree tree = repo.mapTree(Constants.HEAD);
+        
+        if (tree == null) {
+          tree = new Tree(repo);
+        }
+        
+        writeTree(tree);
+        
+        TreeEntry entry = tree.findBlobMember(gist.getIndexEntry().getName());
+        
+        if (entry == null) {
+          entry = tree.addFile(gist.getIndexEntry().getName());
+        }
+
+        entry.setId(gist.getIndexEntry().getObjectId());
+        entry.setModified();
+        
+        GitIndex index = new GitIndex(repo);
+        index.write();
+        
+        Commit commit = new Commit(repo);
+        RefUpdate updateRef = repo.updateRef(Constants.HEAD);
+        
+        if (updateRef.getOldObjectId() != null) {
+          commit.setParentIds(new ObjectId[] {updateRef.getOldObjectId()});
+        }
+        
+        commit.setTreeId(index.writeTree());
+        commit.setAuthor(getOwnerIdent());
+        commit.setCommitter(new PersonIdent("orchestra", "johanliesen@gmail.com"));
+        commit.setMessage("playlist change"); // TODO(liesen): better commit messages
+        commit.commit();
+        
+        updateRef.setNewObjectId(commit.getCommitId());
+        updateRef.setRefLogMessage(commit.getMessage(), false);
+        
+        RefUpdate.Result result = updateRef.update();
+        
+        log.info("Updated, result: {}", result); // TODO(liesen): error handling
+        playlist.setDirty(false);
+      } catch (IOException e) {
+        log.warn("Failed to commit", e);
+        playlist.setDirty(true);
+      }
+    }
+  }
+  
+  private void writeTree(Tree tree) throws IOException {
+    if (tree.getId() == null) {
+      for (TreeEntry member : tree.members()) {
+        if (member.isModified() && member instanceof Tree) {
+          writeTree((Tree) member);
+        }
+      }
+      
+      ObjectWriter writer = new ObjectWriter(tree.getRepository());
+      tree.setId(writer.writeTree(tree));
     }
   }
 
@@ -149,7 +240,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws IOException
    */
   private void writeFile(Playgist gist) throws IOException {
-    File path = gist.getPath();
+    File path = new File(repo.getWorkDir(), gist.getIndexEntry().getName());
     log.info("Writing file {}", path);
 
     if (!path.exists()) {
@@ -157,7 +248,6 @@ public class PlaygistContainer extends PlaylistContainer {
     }
 
     log.info("Writing file {}", path);
-
     BufferedWriter out =
         new BufferedWriter(Channels.newWriter(new FileOutputStream(path).getChannel(), "UTF-8"));
 

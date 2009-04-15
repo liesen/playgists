@@ -18,6 +18,8 @@ import orchestra.playlist.PlaylistListener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spearce.jgit.lib.GitIndex;
+import org.spearce.jgit.lib.Repository;
 
 import de.felixbruns.jotify.media.Track;
 
@@ -32,7 +34,7 @@ public class Playgist implements Playlist {
   private final Map<String, String> metadata;
 
   /** Path to playlist file on disk. */
-  public final File path;
+  private final GitIndex.Entry gitIndexEntry;
   
   private PlaylistListener listener;
 
@@ -40,13 +42,9 @@ public class Playgist implements Playlist {
 
   private boolean dirty;
 
-  private Playgist(File path, List<Track> tracks) {
-    this(path, tracks, new TreeMap<String, String>(), null);
-  }
-
-  private Playgist(File path, List<Track> tracks, Map<String, String> metadata, PlaylistListener listener) {
+  private Playgist(GitIndex.Entry entry, List<Track> tracks, Map<String, String> metadata) {
     this.metadata = metadata;
-    this.path = path;
+    this.gitIndexEntry = entry;
     this.tracks = new LinkedList<Track>(tracks);
     this.listener = null;
   }
@@ -59,7 +57,8 @@ public class Playgist implements Playlist {
    * @throws FileNotFoundException
    * @throws IOException
    */
-  public static Playgist open(File file) throws FileNotFoundException, IOException {
+  public static Playgist open(Repository repo, GitIndex.Entry entry) throws FileNotFoundException, IOException {
+    File file = new File(repo.getWorkDir(), entry.getName());
     BufferedReader reader = new BufferedReader(new FileReader(file));
     Map<String, String> metadata = new TreeMap<String, String>();
     List<Track> tracks = new LinkedList<Track>();
@@ -72,7 +71,7 @@ public class Playgist implements Playlist {
       }
     }
 
-    return new Playgist(file, tracks, metadata, null);
+    return new Playgist(entry, tracks, metadata);
   }
 
   private static void parseMetadata(String line, Map<String, String> metadata) throws IOException {
@@ -151,12 +150,12 @@ public class Playgist implements Playlist {
   }
 
   public String getId() {
-    return path.getName();
+    return gitIndexEntry.getName();
   }
 
   /** Returns the location (on disk) for this gist. */
-  protected File getPath() {
-    return path;
+  public GitIndex.Entry getIndexEntry() {
+    return gitIndexEntry;
   }
 
   public Map<String, String> getMetadata() {

@@ -17,7 +17,7 @@ public class Main {
       System.out.printf("%s (%s) [%s]%n", playlist.getName(), playlist.getId(), playlist.getClass().getName());
     }
     
-    Playlist playlist = container.newPlaylist("Spring Ricco");
+    Playlist playlist = container.createPlaylist("Spring Ricco");
     playlist.addTrack(new Track(Hex.URIToId("241Oo8Eb4YoaL9mYS6VPHX"), null, null, null));
     
     

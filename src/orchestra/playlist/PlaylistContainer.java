@@ -47,34 +47,12 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
     return this;
   }
   
-  public Playlist newPlaylist(String name) throws Exception {
-    throw new NotImplementedException();
-  }
-  
-  public void deletePlaylist(Playlist playlist) throws Exception {
+  public Playlist createPlaylist(String name) throws Exception {
     throw new NotImplementedException();
   }
   
   public Playlist getPlaylist(String id) {
     return playlists.get(id);
-  }
-
-  public Playlist getPlaylistByName(String name) {
-    if (name == null) {
-      throw new NullPointerException("name must not be null");
-    }
-    
-    for (Playlist pl : playlists.values()) {
-      if (name.equals(pl.getName())) {
-        return pl;
-      }
-    }
-    
-    return null;
-  }
-
-  public void hasChanged(Playlist playlist) {
-    
   }
 
   public Collection<Playlist> getPlaylists() {
@@ -83,5 +61,9 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
 
   public Iterator<Playlist> iterator() {
     return playlists.values().iterator();
+  }
+
+  public void hasChanged(Playlist playlist) {
+    
   }
 }
