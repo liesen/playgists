@@ -4,9 +4,7 @@ import java.io.IOException;
 
 import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
-
-import org.spearce.jgit.lib.Repository;
-
+import orchestra.util.Git;
 import de.felixbruns.jotify.Jotify;
 
 public class Maestro extends Jotify {
@@ -20,8 +18,8 @@ public class Maestro extends Jotify {
     playlists = container;
   }
   
-  public static Maestro newInstance(String username, Repository repo) throws Exception {
-    PlaylistContainer playlists = PlaygistContainer.open(username, repo);
+  public static Maestro newInstance(String username, Git git) throws Exception {
+    PlaylistContainer playlists = PlaygistContainer.open(username, git);
     return new Maestro(playlists);
   }
   

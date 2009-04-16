@@ -13,21 +13,16 @@ import java.util.Map;
 
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
+import orchestra.util.Git;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spearce.jgit.lib.Commit;
 import org.spearce.jgit.lib.Constants;
 import org.spearce.jgit.lib.FileTreeEntry;
-import org.spearce.jgit.lib.GitIndex;
-import org.spearce.jgit.lib.ObjectId;
-import org.spearce.jgit.lib.ObjectWriter;
 import org.spearce.jgit.lib.PersonIdent;
-import org.spearce.jgit.lib.RefUpdate;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.lib.SymlinkTreeEntry;
 import org.spearce.jgit.lib.Tree;
-import org.spearce.jgit.lib.TreeEntry;
 import org.spearce.jgit.lib.TreeVisitor;
 
 import de.felixbruns.jotify.media.Track;
@@ -37,11 +32,11 @@ public class PlaygistContainer extends PlaylistContainer {
 
   private final MessageDigest messageDigest;
 
-  private final Repository repo;
+  private final Git git;
 
-  private PlaygistContainer(String owner, Repository repo, MessageDigest digest) {
+  private PlaygistContainer(String owner, Git git, MessageDigest digest) {
     super(owner);
-    this.repo = repo;
+    this.git = git;
     this.messageDigest = digest;
   }
 
@@ -54,10 +49,10 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws IOException
    * @throws GeneralSecurityException
    */
-  public static PlaygistContainer open(String owner, Repository repo) throws IOException,
+  public static PlaygistContainer open(String owner, Git git) throws IOException,
       GeneralSecurityException {
     MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-    PlaygistContainer container = new PlaygistContainer(owner, repo, sha1);
+    PlaygistContainer container = new PlaygistContainer(owner, git, sha1);
     container.readPlaylists();
     return container;
   }
@@ -68,7 +63,8 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws IOException
    */
   private void readPlaylists() throws IOException {
-    Tree head = repo.mapTree(Constants.HEAD);
+    final Repository repo = git.getRepository();
+    final Tree head = repo.mapTree(Constants.HEAD);
 
     if (head != null) {
       head.accept(new TreeVisitor() {
@@ -98,28 +94,17 @@ public class PlaygistContainer extends PlaylistContainer {
   public Playlist createPlaylist(String name) throws Exception {
     String hash = getNextHash();
     String repoRelativePath = new File(getOwner(), hash).getPath();
-    File absolutePath = new File(repo.getWorkDir(), repoRelativePath);
+    File absolutePath = new File(git.getRepository().getWorkDir(), repoRelativePath);
 
-    if (!absolutePath.exists()) {
-      createFile(absolutePath);
+    if (absolutePath.exists()) {
+      throw new IllegalStateException("Playlist file already exists: " + absolutePath.getPath());
     }
 
-    // GitIndex index = repo.getIndex();
-    // GitIndex.Entry indexEntry = index.add(repo.getWorkDir(), absolutePath);
-    // indexEntry.setAssumeValid(false);
-    // index.write();
-    Tree tree = repo.mapTree(Constants.HEAD);
-
-    if (tree == null) {
-      tree = new Tree(repo);
-    }
-
-    FileTreeEntry entry = tree.addFile(repoRelativePath);
-    entry.setId(ObjectId.zeroId());
-    new ObjectWriter(repo).writeTree(tree);
+    createFile(absolutePath);
+    git.add(absolutePath);
 
     log.info("Created new playlist at {}", absolutePath);
-    Playgist gist = Playgist.open(repo.getWorkDir(), new File(getOwner(), hash));
+    Playgist gist = Playgist.open(git.getRepository().getWorkDir(), new File(getOwner(), hash));
     gist.setName(name);
     addPlaygist(gist);
     return gist;
@@ -159,11 +144,14 @@ public class PlaygistContainer extends PlaylistContainer {
    * @return the path to this container's owner
    */
   private File getOwnerRoot() {
-    return new File(repo.getWorkDir(), getOwner());
+    return new File(git.getRepository().getWorkDir(), getOwner());
   }
 
+  /**
+   * @return {@link PersonIdent} of the repository owner.
+   */
   private PersonIdent getOwnerIdent() {
-    return new PersonIdent(repo);
+    return new PersonIdent(git.getRepository());
   }
 
   /**
@@ -171,6 +159,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws Exception
    */
   private String getNextHash() throws Exception {
+    // TODO(liesen): this is a insufficient method for generating a playlist id
     String filename = String.format("%s-%d", getOwner(), size());
     byte[] digest = messageDigest.digest(filename.getBytes(Charset.forName("UTF-8")));
     String hash = new BigInteger(1, digest).toString(16);
@@ -180,42 +169,15 @@ public class PlaygistContainer extends PlaylistContainer {
   @Override
   public void hasChanged(Playlist playlist) {
     if (playlist == null) {
-      log.info("null playlist hasChanged");
       return;
     }
 
     if (playlist instanceof Playgist) {
       Playgist gist = (Playgist) playlist;
+      tryWriteFile(gist);
 
       try {
-        ObjectId objectId = tryWriteFile(gist);
-        Tree tree = repo.mapTree(Constants.HEAD);
-
-        if (tree == null) {
-          log.info("really weird");
-          tree = new Tree(repo);
-        }
-
-        Commit commit = new Commit(repo);
-        RefUpdate updateRef = repo.updateRef(Constants.HEAD);
-
-        if (updateRef.getOldObjectId() != null) {
-          commit.setParentIds(new ObjectId[] {updateRef.getOldObjectId()});
-        }
-
-        commit.setTreeId(objectId);
-        commit.setAuthor(getOwnerIdent());
-        commit.setCommitter(new PersonIdent("orchestra", "johanliesen@gmail.com"));
-        commit.setMessage("playlist change"); // TODO(liesen): better commit
-                                              // messages
-        commit.commit();
-
-        updateRef.setNewObjectId(commit.getCommitId());
-        updateRef.setRefLogMessage(commit.getMessage(), false);
-
-        RefUpdate.Result result = updateRef.update();
-
-        log.info("Updated, result: {}", result); // TODO(liesen): error handling
+        git.commit("Playlist update", gist.getPath());
         playlist.setDirty(false);
       } catch (IOException e) {
         log.warn("Failed to commit", e);
@@ -224,31 +186,16 @@ public class PlaygistContainer extends PlaylistContainer {
     }
   }
 
-  private void writeTree(Tree tree) throws IOException {
-    if (tree.getId() == null) {
-      for (TreeEntry member : tree.members()) {
-        if (member.isModified() && member instanceof Tree) {
-          writeTree((Tree) member);
-        }
-      }
-
-      ObjectWriter writer = new ObjectWriter(tree.getRepository());
-      tree.setId(writer.writeTree(tree));
-    }
-  }
-
   /**
    * Tries to write the playlist to disk. If it fails then the playlist is set
    * to a dirty state.
    */
-  private ObjectId tryWriteFile(Playgist gist) {
+  private void tryWriteFile(Playgist gist) {
     try {
-      return writeFile(gist);
+      writeFile(gist);
     } catch (IOException e) {
       e.printStackTrace();
     }
-
-    return ObjectId.zeroId();
   }
 
   /**
@@ -256,7 +203,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * 
    * @throws IOException
    */
-  private ObjectId writeFile(Playgist gist) throws IOException {
+  private void writeFile(Playgist gist) throws IOException {
     File path = gist.getPath();
     log.info("Writing file {}", path);
 
@@ -284,7 +231,5 @@ public class PlaygistContainer extends PlaylistContainer {
 
     out.flush();
     out.close();
-
-    return new ObjectWriter(repo).writeBlob(path);
   }
 }

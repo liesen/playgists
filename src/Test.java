@@ -3,11 +3,12 @@ import java.io.File;
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
+import orchestra.util.Base62;
+import orchestra.util.Git;
 
 import org.spearce.jgit.lib.Repository;
 
 import de.felixbruns.jotify.media.Track;
-import de.felixbruns.jotify.util.Hex;
 
 public class Test {
   public static String[] tracks = new String[] {
@@ -23,11 +24,13 @@ public class Test {
   };
   
   public static void main(String[] args) throws Exception {
-    PlaylistContainer container = PlaygistContainer.open("liesen", new Repository(new File("/Users/liesen/playgists/.git")));
-    Playlist pl = container.createPlaylist("Spring Ricco");
+    final Repository repo = new Repository(new File("/Users/liesen/playgists/.git"));
+    final Git git = new Git(repo);
+    final PlaylistContainer container = PlaygistContainer.open("liesen", git);
+    final Playlist pl = container.createPlaylist("Spring Ricco");
     
     for (String s : tracks) {
-      Track tr = new Track(Hex.URIToId(s), null, null, null);
+      Track tr = new Track(Base62.decodeBigInteger(s).toString(16), null, null, null);
       pl.addTrack(tr);
     }
     
