@@ -25,23 +25,23 @@ import de.felixbruns.jotify.media.Track;
 
 public class Playgist implements Playlist, Iterable<Track> {
   private static final Logger log = LoggerFactory.getLogger(Playgist.class);
-  
+
   public static final String METADATA_PREFIX = "> ";
-  
+
   private static final String COLLABORATIVE_PROPERTY_NAME = "collaborative";
   private static final String NAME_PROPERTY_NAME = "name";
-  
+
   private final Map<String, String> metadata;
 
   /** Entry in the git tree. */
   private TreeEntry treeEntry;
-  
+
   /** Path to the file on disk. */
   private final File absolutePath;
-  
-  private PlaylistListener listener;
 
-  private final LinkedList<Track> tracks;
+  private List<PlaylistListener> listeners;
+
+  private final List<Track> tracks;
 
   private boolean dirty;
 
@@ -49,7 +49,7 @@ public class Playgist implements Playlist, Iterable<Track> {
     this.metadata = metadata;
     this.absolutePath = path;
     this.tracks = new LinkedList<Track>(tracks);
-    this.listener = null;
+    this.listeners = new LinkedList<PlaylistListener>();
   }
 
   /**
@@ -77,46 +77,89 @@ public class Playgist implements Playlist, Iterable<Track> {
     return new Playgist(file.getAbsoluteFile(), tracks, metadata);
   }
 
-  private static void parseMetadataLine(String line, Map<String, String> metadata) throws IOException {
+  private static void parseMetadataLine(String line, Map<String, String> metadata)
+      throws IOException {
     Properties props = new Properties();
     props.load(new StringReader(line.substring(METADATA_PREFIX.length())));
     log.info("Reading property line: {}", line);
-    
+
     for (String key : props.stringPropertyNames()) {
       metadata.put(key, props.getProperty(key));
     }
   }
-  
+
+  public String getId() {
+    return absolutePath.getName();
+  }
+
+  /** Returns the location (on disk) for this gist. */
+  public TreeEntry getTreeEntry() {
+    return treeEntry;
+  }
+
+  /**
+   * @return the path to the file on disk.
+   */
+  public File getPath() {
+    return absolutePath;
+  }
+
+  // TODO(liesen): remove this asap and use getName etc. instead
+  public Map<String, String> getMetadata() {
+    return Collections.unmodifiableMap(metadata);
+  }
+
+  public String getName() {
+    return metadata.get(NAME_PROPERTY_NAME);
+  }
+
   public Playlist setName(String name) {
     String currentName = getName();
-    
+
     if (currentName == null || !currentName.equals(name)) {
       metadata.put(NAME_PROPERTY_NAME, name);
       notifyListeners();
     }
-    
+
     return this;
   }
-  
-  public String getName() {
-    return metadata.get(NAME_PROPERTY_NAME);
+
+  public boolean isCollaborative() {
+    if (!metadata.containsKey(COLLABORATIVE_PROPERTY_NAME)) {
+      return false;
+    }
+
+    return metadata.get(COLLABORATIVE_PROPERTY_NAME).equalsIgnoreCase("true");
   }
-  
+
   public Playlist setCollaborative(boolean collaborative) {
     if (!isCollaborative() && collaborative) {
       metadata.put(COLLABORATIVE_PROPERTY_NAME, "true");
       notifyListeners();
     }
-    
+
     return this;
   }
-  
-  public boolean isCollaborative() {
-    if (!metadata.containsKey(COLLABORATIVE_PROPERTY_NAME)) {
-      return false;
-    }
-    
-    return metadata.get(COLLABORATIVE_PROPERTY_NAME).equalsIgnoreCase("true");
+
+  public String getAuthor() {
+    throw new UnsupportedOperationException();
+  }
+
+  public Playlist setAuthor(String owner) {
+    throw new UnsupportedOperationException();
+  }
+
+  public int getRevision() {
+    throw new UnsupportedOperationException();
+  }
+
+  public boolean isDirty() {
+    return dirty;
+  }
+
+  public Playlist setDirty(boolean dirty) {
+    this.dirty = dirty;
+    return this;
   }
 
   public Playlist addTrack(int index, Track track) {
@@ -124,7 +167,13 @@ public class Playgist implements Playlist, Iterable<Track> {
     notifyListeners();
     return this;
   }
-  
+
+  public Playlist addTrack(Track track) {
+    tracks.add(track);
+    notifyListeners();
+    return this;
+  }
+
   public Playlist addTracks(List<Track> tracks) {
     tracks.addAll(tracks); // Batch
     notifyListeners();
@@ -144,73 +193,34 @@ public class Playgist implements Playlist, Iterable<Track> {
     notifyListeners();
     return this;
   }
-  
-  /**
-   * Tries to write the playlist to disk. If it fails then the playlist is set
-   * to a dirty state.
-   */
-  private void notifyListeners() {
-    if (listener != null) {
-      listener.playlistChanged(this);
-    }
-  }
 
-  public String getId() {
-    return absolutePath.getName();
-  }
-
-  /** Returns the location (on disk) for this gist. */
-  public TreeEntry getTreeEntry() {
-    return treeEntry;
-  }
-
-  public Map<String, String> getMetadata() {
-    return Collections.unmodifiableMap(metadata);
-  }
-
-  public Playlist addTrack(Track track) {
-    tracks.add(track);
+  public Playlist removeTracks(List<Track> tracks) {
+    tracks.removeAll(tracks);
     notifyListeners();
     return this;
   }
 
-  public String getAuthor() {
-    throw new UnsupportedOperationException();
-  }
-
-  public int getRevision() {
-    throw new UnsupportedOperationException();
-  }
-
-  public boolean isDirty() {
-    return dirty;
-  }
-
-  public Playlist setDirty(boolean dirty) {
-    this.dirty = dirty;
-    return this;
-  }
-
-  public Playlist setAuthor(String owner) {
-    throw new UnsupportedOperationException();
-  }
-
-  public void setListener(PlaylistListener listener) {
-    this.listener = listener;
-  }
-
-  public File getPath() {
-    return absolutePath;
-  }
-
-  public void removeTracks(List<Track> tracks) {
-    tracks.clear();
-    notifyListeners();
-  }
-  
-  public void setTracks(List<Track> tracks) {
+  public Playlist setTracks(List<Track> tracks) {
     tracks.clear();
     tracks.addAll(tracks);
     notifyListeners();
+    return this;
+  }
+
+  public void addListener(PlaylistListener listener) {
+    listeners.add(listener);
+  }
+
+  public void removeListener(PlaylistListener listener) {
+    listeners.remove(listener);
+  }
+
+  /**
+   * Notifies interested parties that this playlist has changed.
+   */
+  private void notifyListeners() {
+    for (final PlaylistListener listener : listeners) {
+      listener.playlistChanged(this);
+    }
   }
 }

@@ -31,11 +31,11 @@ public interface Playlist {
 
   public Playlist addTracks(List<Track> tracks);
 
+  public Playlist setTracks(List<Track> tracks);
+
   public Playlist removeTrack(Track track);
 
+  public Playlist removeTracks(List<Track> tracks);
+
   public List<Track> getTracks();
-
-  public void removeTracks(List<Track> tracks);
-
-  public void setTracks(List<Track> tracks);
 }
