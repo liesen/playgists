@@ -11,9 +11,9 @@ public interface Playlist {
 
   public Playlist setName(String name);
 
-  public String getOwner();
+  public String getAuthor();
 
-  public Playlist setOwner(String owner);
+  public Playlist setAuthor(String owner);
 
   public int getRevision();
 
@@ -34,4 +34,8 @@ public interface Playlist {
   public Playlist removeTrack(Track track);
 
   public List<Track> getTracks();
+
+  public void removeTracks(List<Track> tracks);
+
+  public void setTracks(List<Track> tracks);
 }
