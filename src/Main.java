@@ -35,21 +35,6 @@ public class Main {
 
     JotifyApplication app = new JotifyApplication(maestro);
     app.initialize();
-    
-    final Playlist playlist = new JotifyPlaylist(maestro.getPlaylistContainer().getPlaylists().iterator().next()); 
-    Result trackBrowseResult = maestro.browse(maestro.getPlaylistContainer().getPlaylists().iterator().next().getTracks().get(0));
-    LOGGER.info("Track browse result: {}", trackBrowseResult);
-    
-    for (Track tr : trackBrowseResult.getTracks()) {
-      LOGGER.info("\t{} {} {} {}", new Object[] {tr.getId(), tr.getFiles(), tr.getArtist(), tr.getTitle()});
-    }
-    
-    Result multipleTracksBrowseResult = maestro.browse(maestro.playlist(playlist.getId()).getTracks());
-    LOGGER.info("Multiple tracks browse result: {}", trackBrowseResult);
-    
-    for (Track tr : multipleTracksBrowseResult.getTracks()) {
-      LOGGER.info("\t{} {} {} {}", new Object[] {tr.getId(), tr.getFiles(), tr.getArtist(), tr.getTitle()});
-    }
   }
 
   static class SneakyPlaylistListener implements PlaylistListener {
