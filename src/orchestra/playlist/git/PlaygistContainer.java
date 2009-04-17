@@ -139,7 +139,7 @@ public class PlaygistContainer extends PlaylistContainer {
    * @throws Exception
    */
   private void addPlaygist(Playgist gist) throws IOException {
-    gist.setListener(this);
+    gist.addListener(this);
     addPlaylist(gist);
   }
 
