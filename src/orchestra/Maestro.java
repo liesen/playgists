@@ -62,7 +62,7 @@ public class Maestro extends Jotify {
         return new JotifyPlaylist(playgist);
       }
 
-      return null;
+      return null; // Otherwise Jotify fails
     }
 
     return super.playlist(id, useCache);

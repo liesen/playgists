@@ -1,6 +1,4 @@
 import java.io.File;
-import java.util.LinkedList;
-import java.util.List;
 
 import orchestra.Maestro;
 import orchestra.util.Git;
@@ -21,30 +19,15 @@ public class Main {
   public static void main(String[] args) throws Exception {
     final Repository repo = new Repository(new File("/Users/liesen/playgists/.git"));
     final Git git = new Git(repo);
-    final Maestro maestro = Maestro.newInstance("liesen", git);
-    
-    final JotifyBroadcast broadcaster = JotifyBroadcast.getInstance(); // Love
-    // static!
-    LOGGER.info("Broadcast instance: {}", broadcaster);
-
-    PlaylistListener playlistListener = new LoggingPlaylistListener();
-    broadcaster.addPlaylistListener(playlistListener);
-
+    final Maestro maestro = Maestro.newInstance("liesen", git);    
+    JotifyBroadcast.getInstance().addPlaylistListener(new LoggingPlaylistListener());
     JotifyApplication app = new JotifyApplication(maestro);
     app.initialize();
   }
 
   static class LoggingPlaylistListener implements PlaylistListener {
-    private int numPlaylists;
-    
-    /**
-     * @param broadcaster
-     */
-    public LoggingPlaylistListener() {
-    }
-
     public void playlistAdded(Playlist playlist) {
-      LOGGER.info("Adding playlist '{}' (count: {})", playlist.getName(), ++numPlaylists);
+      LOGGER.info("Adding playlist '{}'", playlist.getName());
     }
 
     public void playlistRemoved(Playlist playlist) {
