@@ -16,7 +16,7 @@ import de.felixbruns.jotify.media.Playlists;
 
 public class Maestro extends Jotify {
   private static final Logger LOGGER = LoggerFactory.getLogger(Maestro.class);
-  
+
   private PlaylistContainer playlists;
 
   /**
@@ -52,14 +52,16 @@ public class Maestro extends Jotify {
   @Override
   public de.felixbruns.jotify.media.Playlist playlist(String id, boolean useCache) {
     LOGGER.info("Fetching playlist: {}", id);
-    
+
+    // TODO(liesen): This is kind of not the way we'd want to distinguish
+    // between types of playlists
     if (id.length() == 40) {
       Playlist playgist = playlists.getPlaylist(id);
 
       if (playgist != null) {
         return new JotifyPlaylist(playgist);
       }
-      
+
       return null;
     }
 
