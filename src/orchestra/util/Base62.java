@@ -1,27 +1,9 @@
 package orchestra.util;
 
 import java.math.BigInteger;
-import static java.util.Arrays.binarySearch;;
 
 public class Base62 {
   private static final BigInteger BASE = BigInteger.valueOf(62);
-
-  private static final byte[] DIGITS = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
-
-  private static final byte[] LOWERCASE_LETTERS =
-      {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-          's', 't', 'u', 'v', 'w', 'x', 'y', 'z'};
-
-  private static final byte[] UPPERCASE_LETTERS =
-      {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-          'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
-
-  // Index of the first lower-case letter
-  private static final int LOWERCASE_LETTER_LOW_INDEX = DIGITS.length;
-
-  // Index of the first upper-case letter
-  private static final int UPPERCASE_LETTER_LOW_INDEX =
-      LOWERCASE_LETTER_LOW_INDEX + LOWERCASE_LETTERS.length;
 
   /**
    * Returns the index of a byte in the alphabet.
@@ -30,19 +12,13 @@ public class Base62 {
    * @return index of key in alphabet
    */
   private static final int getValueForByte(byte key) {
-    int index;
+    if (Character.isLowerCase(key)) {
+      return key - ('a' + 10);
+    } else if (Character.isUpperCase(key)) {
+      return key - ('A' + 10 + 26);
+    }
     
-    // Try letters first since they are more likely to occur (assuming an even
-    // distribution).
-    if ((index = binarySearch(LOWERCASE_LETTERS, key)) >= 0) {
-      return LOWERCASE_LETTER_LOW_INDEX + index;
-    }
-
-    if ((index = binarySearch(UPPERCASE_LETTERS, key)) >= 0) {
-      return UPPERCASE_LETTER_LOW_INDEX + index;
-    }
-
-    return binarySearch(DIGITS, key);
+    return key - '0';
   }
 
   /**
