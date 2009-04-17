@@ -195,14 +195,14 @@ public class Playgist implements Playlist, Iterable<Track> {
   }
 
   public Playlist removeTracks(List<Track> tracks) {
-    tracks.removeAll(tracks);
+    this.tracks.removeAll(tracks);
     notifyListeners();
     return this;
   }
 
   public Playlist setTracks(List<Track> tracks) {
-    tracks.clear();
-    tracks.addAll(tracks);
+    this.tracks.clear();
+    this.tracks.addAll(tracks);
     notifyListeners();
     return this;
   }
