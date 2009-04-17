@@ -3,20 +3,19 @@ import java.util.LinkedList;
 import java.util.List;
 
 import orchestra.Maestro;
+import orchestra.playlist.JotifyPlaylist;
 import orchestra.util.Git;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spearce.jgit.lib.Repository;
 
-import de.felixbruns.jotify.Jotify;
 import de.felixbruns.jotify.gui.JotifyApplication;
 import de.felixbruns.jotify.gui.listeners.JotifyBroadcast;
 import de.felixbruns.jotify.gui.listeners.PlaylistListener;
-import de.felixbruns.jotify.gui.util.JotifyPool;
 import de.felixbruns.jotify.media.Playlist;
 import de.felixbruns.jotify.media.Result;
-
+import de.felixbruns.jotify.media.Track;
 
 
 public class Main {
@@ -26,7 +25,7 @@ public class Main {
     final Repository repo = new Repository(new File("/Users/liesen/playgists/.git"));
     final Git git = new Git(repo);
     final Maestro maestro = Maestro.newInstance("liesen", git);
-
+    
     final JotifyBroadcast broadcaster = JotifyBroadcast.getInstance(); // Love
     // static!
     LOGGER.info("Broadcast instance: {}", broadcaster);
@@ -34,8 +33,23 @@ public class Main {
     PlaylistListener playlistListener = new SneakyPlaylistListener(broadcaster, maestro);
     broadcaster.addPlaylistListener(playlistListener);
 
-    JotifyApplication app = new JotifyApplication();
+    JotifyApplication app = new JotifyApplication(maestro);
     app.initialize();
+    
+    final Playlist playlist = new JotifyPlaylist(maestro.getPlaylistContainer().getPlaylists().iterator().next()); 
+    Result trackBrowseResult = maestro.browse(maestro.getPlaylistContainer().getPlaylists().iterator().next().getTracks().get(0));
+    LOGGER.info("Track browse result: {}", trackBrowseResult);
+    
+    for (Track tr : trackBrowseResult.getTracks()) {
+      LOGGER.info("\t{} {} {} {}", new Object[] {tr.getId(), tr.getFiles(), tr.getArtist(), tr.getTitle()});
+    }
+    
+    Result multipleTracksBrowseResult = maestro.browse(maestro.playlist(playlist.getId()).getTracks());
+    LOGGER.info("Multiple tracks browse result: {}", trackBrowseResult);
+    
+    for (Track tr : multipleTracksBrowseResult.getTracks()) {
+      LOGGER.info("\t{} {} {} {}", new Object[] {tr.getId(), tr.getFiles(), tr.getArtist(), tr.getTitle()});
+    }
   }
 
   static class SneakyPlaylistListener implements PlaylistListener {
@@ -81,12 +95,14 @@ public class Main {
 
         // Resolve tracks
         try {
-          final Jotify jotify = JotifyPool.getInstance(); // Nice...
-          LOGGER.info("Updating the track list using {}", jotify);
-
           for (final Playlist newPlaylist : newPlaylists) {
-            final Result result = jotify.browse(playlist.getTracks());
+            final Result result = maestro.browse(playlist.getTracks());
             newPlaylist.setTracks(result.getTracks());
+            LOGGER.info("New tracks for {}", newPlaylist.getName());
+            
+            for (Track t : newPlaylist) {
+              LOGGER.info("\t{}: {}, {}", new Object[] {t.getId(), t.getArtist(), t.getFiles()});
+            }
           }
 
           update = false;

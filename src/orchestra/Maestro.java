@@ -40,4 +40,9 @@ public class Maestro extends Jotify {
     
     return pls;
   }
+  
+  @Override
+  public de.felixbruns.jotify.media.Playlist playlist(String id, boolean useCache) {
+    return new JotifyPlaylist(playlists.getPlaylist(id));
+  }
 }
