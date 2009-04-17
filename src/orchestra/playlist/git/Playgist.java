@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ import org.spearce.jgit.lib.TreeEntry;
 
 import de.felixbruns.jotify.media.Track;
 
-public class Playgist implements Playlist {
+public class Playgist implements Playlist, Iterable<Track> {
   private static final Logger log = LoggerFactory.getLogger(Playgist.class);
   
   public static final String METADATA_PREFIX = "> ";
@@ -32,10 +33,11 @@ public class Playgist implements Playlist {
   
   private final Map<String, String> metadata;
 
-  /** Path to playlist file on disk. */
+  /** Entry in the git tree. */
   private TreeEntry treeEntry;
   
-  private File absolutePath;
+  /** Path to the file on disk. */
+  private final File absolutePath;
   
   private PlaylistListener listener;
 
@@ -81,7 +83,6 @@ public class Playgist implements Playlist {
     log.info("Reading property line: {}", line);
     
     for (String key : props.stringPropertyNames()) {
-      log.info("Reading property: {}", key);
       metadata.put(key, props.getProperty(key));
     }
   }
@@ -134,6 +135,10 @@ public class Playgist implements Playlist {
     return Collections.unmodifiableList(tracks);
   }
 
+  public Iterator<Track> iterator() {
+    return getTracks().iterator();
+  }
+
   public Playlist removeTrack(Track track) {
     tracks.remove(track);
     notifyListeners();
@@ -146,7 +151,7 @@ public class Playgist implements Playlist {
    */
   private void notifyListeners() {
     if (listener != null) {
-      listener.hasChanged(this);
+      listener.playlistChanged(this);
     }
   }
 
@@ -169,7 +174,7 @@ public class Playgist implements Playlist {
     return this;
   }
 
-  public String getOwner() {
+  public String getAuthor() {
     throw new UnsupportedOperationException();
   }
 
@@ -186,7 +191,7 @@ public class Playgist implements Playlist {
     return this;
   }
 
-  public Playlist setOwner(String owner) {
+  public Playlist setAuthor(String owner) {
     throw new UnsupportedOperationException();
   }
 
@@ -196,5 +201,16 @@ public class Playgist implements Playlist {
 
   public File getPath() {
     return absolutePath;
+  }
+
+  public void removeTracks(List<Track> tracks) {
+    tracks.clear();
+    notifyListeners();
+  }
+  
+  public void setTracks(List<Track> tracks) {
+    tracks.clear();
+    tracks.addAll(tracks);
+    notifyListeners();
   }
 }

@@ -66,7 +66,6 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
     return playlists.values().iterator();
   }
 
-  public void hasChanged(Playlist playlist) {
-    
+  public void playlistChanged(Playlist playlist) {
   }
 }

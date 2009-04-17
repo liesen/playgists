@@ -2,9 +2,10 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Jotify"/>
-	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-api-1.5.6.jar"/>
+	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-api-1.5.6.jar" sourcepath="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-api-1.5.6-sources.jar"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-simple-1.5.6.jar"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/sandbox/egit/jgit.jar" sourcepath="/Users/liesen/code/sandbox/egit/org.spearce.jgit/src"/>
+	<classpathentry kind="lib" path="/Users/liesen/code/sandbox/egit/org.spearce.jgit/lib/jsch-0.1.37.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/JotifyGUI"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

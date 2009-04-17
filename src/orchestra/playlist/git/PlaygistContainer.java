@@ -27,6 +27,10 @@ import org.spearce.jgit.lib.TreeVisitor;
 
 import de.felixbruns.jotify.media.Track;
 
+/**
+ * A "playlist of playlists" for git-backed "gists".
+ * 
+ */
 public class PlaygistContainer extends PlaylistContainer {
   private static final Logger log = LoggerFactory.getLogger(PlaygistContainer.class);
 
@@ -71,8 +75,8 @@ public class PlaygistContainer extends PlaylistContainer {
         public void visitFile(FileTreeEntry f) throws IOException {
           try {
             Playgist gist = Playgist.open(repo.getWorkDir(), new File(f.getFullName()));
+            log.info("Added playlist: {}", gist.getName());
             addPlaygist(gist);
-            log.info("Added playlist: {}", gist.getTreeEntry().getName());
           } catch (IOException e) {
             log.info("Failed to open gist: {}", e.getMessage());
           }
@@ -112,7 +116,6 @@ public class PlaygistContainer extends PlaylistContainer {
 
   // Tries harder than plain Java to create the file, /absoluteFile/.
   private void createFile(File absolutePath) throws IOException {
-    log.info("Attempting to create {}", absolutePath);
     try {
       if (absolutePath.createNewFile()) {
         return;
@@ -162,12 +165,12 @@ public class PlaygistContainer extends PlaylistContainer {
     // TODO(liesen): this is a insufficient method for generating a playlist id
     String filename = String.format("%s-%d", getOwner(), size());
     byte[] digest = messageDigest.digest(filename.getBytes(Charset.forName("UTF-8")));
-    String hash = new BigInteger(1, digest).toString(16);
+    String hash = String.format("%040x", new BigInteger(1, digest));
     return hash;
   }
 
   @Override
-  public void hasChanged(Playlist playlist) {
+  public void playlistChanged(Playlist playlist) {
     if (playlist == null) {
       return;
     }
@@ -205,13 +208,11 @@ public class PlaygistContainer extends PlaylistContainer {
    */
   private void writeFile(Playgist gist) throws IOException {
     File path = gist.getPath();
-    log.info("Writing file {}", path);
 
     if (!path.exists()) {
       path.createNewFile();
     }
 
-    log.info("Writing file {}", path);
     BufferedWriter out =
         new BufferedWriter(Channels.newWriter(new FileOutputStream(path).getChannel(), "UTF-8"));
 
@@ -219,6 +220,7 @@ public class PlaygistContainer extends PlaylistContainer {
     Map<String, String> metadata = gist.getMetadata();
 
     for (String prop : metadata.keySet()) {
+      // TODO(liesen): user some lib for storing metadata
       out.write(String.format("%s%s = %s", Playgist.METADATA_PREFIX, prop, metadata.get(prop)));
       out.newLine();
     }
