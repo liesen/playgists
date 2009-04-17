@@ -1,12 +1,9 @@
 import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import orchestra.Maestro;
 import orchestra.util.Git;
-import orchestra.util.TrackIdComparator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +16,6 @@ import de.felixbruns.jotify.gui.listeners.PlaylistListener;
 import de.felixbruns.jotify.gui.util.JotifyPool;
 import de.felixbruns.jotify.media.Playlist;
 import de.felixbruns.jotify.media.Result;
-import de.felixbruns.jotify.media.Track;
 
 
 
@@ -82,25 +78,26 @@ public class Main {
 
       if (update) {
         newPlaylists = maestro.playlists().getPlaylists();
-        
-        for (final Playlist newPlaylist : newPlaylists) {
-          // We don't get track resolving for free
 
-          // Thank god for singletons! X(
-          try {
-            final Jotify jotify = JotifyPool.getInstance();
-            LOGGER.info("Updating the track list using {}", jotify);
+        // Resolve tracks
+        try {
+          final Jotify jotify = JotifyPool.getInstance(); // Nice...
+          LOGGER.info("Updating the track list using {}", jotify);
+
+          for (final Playlist newPlaylist : newPlaylists) {
             final Result result = jotify.browse(playlist.getTracks());
             newPlaylist.setTracks(result.getTracks());
-          } catch (Exception e) {
-            LOGGER.info("Could not get hold of the Jotify instance", e);
           }
-        }
-        
-        update = false;
-        
-        for (final Playlist newPlaylist : newPlaylists) {
-          broadcaster.firePlaylistUpdated(newPlaylist);
+
+          update = false;
+
+          for (final Playlist newPlaylist : newPlaylists) {
+            broadcaster.firePlaylistUpdated(newPlaylist);
+          }
+        } catch (Exception e) {
+          LOGGER.info("Could not get hold of the Jotify instance", e);
+        } finally {
+          update = false; // Make sure we don't try again
         }
       }
     }
