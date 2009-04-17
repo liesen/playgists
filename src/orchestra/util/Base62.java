@@ -2,6 +2,12 @@ package orchestra.util;
 
 import java.math.BigInteger;
 
+
+/**
+ * Encoders and decoders for base-62 formatted data. Uses the alphabet 0..9 a..z
+ * A..Z, e.g. '0' => 0, 'a' => 10, 'A' => 36 and 'Z' => 62.
+ * 
+ */
 public class Base62 {
   private static final BigInteger BASE = BigInteger.valueOf(62);
 
@@ -13,11 +19,11 @@ public class Base62 {
    */
   private static final int getValueForByte(byte key) {
     if (Character.isLowerCase(key)) {
-      return key - ('a' + 10);
+      return key - ('a' - 10);
     } else if (Character.isUpperCase(key)) {
-      return key - ('A' + 10 + 26);
+      return key - ('A' - 10 - 26);
     }
-    
+
     return key - '0';
   }
 
