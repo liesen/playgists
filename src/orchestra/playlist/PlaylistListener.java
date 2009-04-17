@@ -1,5 +1,5 @@
 package orchestra.playlist;
 
 public interface PlaylistListener {
-  public void hasChanged(Playlist playlist);
+  public void playlistChanged(Playlist playlist);
 }
