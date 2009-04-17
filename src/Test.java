@@ -30,7 +30,8 @@ public class Test {
     final Playlist pl = container.createPlaylist("Spring Ricco");
     
     for (String s : tracks) {
-      Track tr = new Track(Base62.decodeBigInteger(s).toString(16), null, null, null);
+      String trackId = String.format("%032x", Base62.decodeBigInteger(s));
+      Track tr = new Track(trackId, null, null, null);
       pl.addTrack(tr);
     }
     
