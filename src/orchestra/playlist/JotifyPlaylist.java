@@ -1,81 +1,116 @@
 package orchestra.playlist;
 
+import java.util.Iterator;
 import java.util.List;
 
 import de.felixbruns.jotify.media.Track;
 
 
-public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist implements Playlist {
-  private boolean collaborative;
-  private boolean dirty;
-  
-  /**
-   * 
-   */
-  protected JotifyPlaylist() {
-    super();
-  }
+/**
+ * Wrapper for a Jotify playlist. Let's us do crazy stuff behind the scenes.
+ * 
+ */
+public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
+  private final Playlist playlist;
 
   /**
-   * @param id
-   * @param name
-   * @param author
+   * @param playlist
    */
-  protected JotifyPlaylist(String id, String name, String author) {
-    super(id, name, author);
+  public JotifyPlaylist(Playlist playlist) {
+    this.playlist = playlist;
   }
 
-  public Playlist addTrack(int index, Track track) {
-    getTracks().add(index, track);
-    return this;
+  @Override
+  public String getAuthor() {
+    return playlist.getAuthor();
   }
 
-  public Playlist addTrack(Track track) {
-    getTracks().add(track);
-    return this;
-  }
-
-  public Playlist addTracks(List<Track> tracks) {
-    getTracks().addAll(tracks);
-    return this;
-  }
-
-  public String getOwner() {
-    return getAuthor();
-  }
-
-  public int getRevision() {
+  @Override
+  public long getChecksum() {
     return 0;
   }
 
+  @Override
+  public String getId() {
+    return playlist.getId();
+  }
+
+  @Override
+  public String getName() {
+    return playlist.getName();
+  }
+
+  @Override
+  public long getRevision() {
+    return playlist.getRevision();
+  }
+
+  @Override
+  public List<Track> getTracks() {
+    return playlist.getTracks();
+  }
+
+  @Override
+  public boolean hasTracks() {
+    return playlist.getTracks().size() > 0;
+  }
+
+  @Override
   public boolean isCollaborative() {
-    return collaborative;
+    return playlist.isCollaborative();
   }
 
-  public boolean isDirty() {
-    return dirty;
+  @Override
+  public Iterator<Track> iterator() {
+    return playlist.getTracks().iterator();
   }
 
-  public Playlist removeTrack(Track track) {
-    getTracks().remove(track);
-    return this;
+  @Override
+  public void setAuthor(String author) {
+    playlist.setAuthor(author);
   }
 
-  public Playlist setCollaborative(boolean collaborative) {
-    this.collaborative = collaborative;
-    return this;
+  @Override
+  public void setChecksum(long checksum) {
+    // throw new UnsupportedOperationException();
   }
 
-  public Playlist setDirty(boolean dirty) {
-    this.dirty = dirty;
-    return this;
+  @Override
+  public void setCollaborative(boolean collaborative) {
+    playlist.setCollaborative(collaborative);
   }
 
-  public Playlist setName(String name) {
+  @Override
+  public void setId(String id) {
+    // What? NO!
     throw new UnsupportedOperationException();
   }
 
-  public Playlist setOwner(String owner) {
-    throw new UnsupportedOperationException();
+  @Override
+  public void setName(String name) {
+    playlist.setName(name);
+  }
+
+  @Override
+  public void setRevision(long revision) {
+    // throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setTracks(List<Track> tracks) {
+    playlist.setTracks(tracks);
+  }
+  
+  @Override
+  public boolean equals(Object o) {
+    if (o == this) {
+      return true;
+    }
+    
+    if (!(o instanceof Playlist)) {
+      return false;
+    }
+    
+    return getId().equalsIgnoreCase(((Playlist) o).getId());
   }
 }
