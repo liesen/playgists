@@ -7,10 +7,16 @@ import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
 import orchestra.util.Git;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import de.felixbruns.jotify.Jotify;
 import de.felixbruns.jotify.media.Playlists;
 
 public class Maestro extends Jotify {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Maestro.class);
+  
   private PlaylistContainer playlists;
 
   /**
@@ -20,29 +26,43 @@ public class Maestro extends Jotify {
     super();
     playlists = container;
   }
-  
+
   public static Maestro newInstance(String username, Git git) throws Exception {
     PlaylistContainer playlists = PlaygistContainer.open(username, git);
     return new Maestro(playlists);
   }
-  
+
   public PlaylistContainer getPlaylistContainer() throws IOException {
     return playlists;
   }
-  
+
   @Override
   public Playlists playlists() {
-    Playlists pls = new Playlists();
-    
+    Playlists pls = super.playlists();
+
     for (Playlist pl : playlists) {
-      pls.getPlaylists().add(new JotifyPlaylist(pl));
+      // Add new playlists first since Jotify stops updating playlists if one
+      // update fails
+      pls.getPlaylists().add(0, new JotifyPlaylist(pl));
     }
-    
+
     return pls;
   }
-  
+
   @Override
   public de.felixbruns.jotify.media.Playlist playlist(String id, boolean useCache) {
-    return new JotifyPlaylist(playlists.getPlaylist(id));
+    LOGGER.info("Fetching playlist: {}", id);
+    
+    if (id.length() == 40) {
+      Playlist playgist = playlists.getPlaylist(id);
+
+      if (playgist != null) {
+        return new JotifyPlaylist(playgist);
+      }
+      
+      return null;
+    }
+
+    return super.playlist(id, useCache);
   }
 }

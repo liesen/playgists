@@ -3,7 +3,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import orchestra.Maestro;
-import orchestra.playlist.JotifyPlaylist;
 import orchestra.util.Git;
 
 import org.slf4j.Logger;
@@ -14,8 +13,6 @@ import de.felixbruns.jotify.gui.JotifyApplication;
 import de.felixbruns.jotify.gui.listeners.JotifyBroadcast;
 import de.felixbruns.jotify.gui.listeners.PlaylistListener;
 import de.felixbruns.jotify.media.Playlist;
-import de.felixbruns.jotify.media.Result;
-import de.felixbruns.jotify.media.Track;
 
 
 public class Main {
@@ -30,39 +27,23 @@ public class Main {
     // static!
     LOGGER.info("Broadcast instance: {}", broadcaster);
 
-    PlaylistListener playlistListener = new SneakyPlaylistListener(broadcaster, maestro);
+    PlaylistListener playlistListener = new LoggingPlaylistListener();
     broadcaster.addPlaylistListener(playlistListener);
 
     JotifyApplication app = new JotifyApplication(maestro);
     app.initialize();
   }
 
-  static class SneakyPlaylistListener implements PlaylistListener {
-    private final JotifyBroadcast broadcaster;
+  static class LoggingPlaylistListener implements PlaylistListener {
     private int numPlaylists;
-    private final Maestro maestro;
-    private List<Playlist> newPlaylists;
-    private volatile boolean update = false;
-
+    
     /**
      * @param broadcaster
      */
-    public SneakyPlaylistListener(JotifyBroadcast broadcaster, Maestro maestro) {
-      this.broadcaster = broadcaster;
-      this.maestro = maestro;
-      newPlaylists = new LinkedList<Playlist>(maestro.playlists().getPlaylists());
+    public LoggingPlaylistListener() {
     }
 
     public void playlistAdded(Playlist playlist) {
-      if (newPlaylists.size() > 0) {
-        LOGGER.info("Aadding new playlist");
-
-        Playlist newPlaylist = newPlaylists.remove(0);
-        broadcaster.firePlaylistAdded(newPlaylist); // Will cause the next
-        // playlist to be added
-        update = true;
-      }
-
       LOGGER.info("Adding playlist '{}' (count: {})", playlist.getName(), ++numPlaylists);
     }
 
@@ -74,33 +55,6 @@ public class Main {
 
     public void playlistUpdated(Playlist playlist) {
       LOGGER.info("Playlist '{}' updated", playlist.getName());
-
-      if (update) {
-        newPlaylists = maestro.playlists().getPlaylists();
-
-        // Resolve tracks
-        try {
-          for (final Playlist newPlaylist : newPlaylists) {
-            final Result result = maestro.browse(playlist.getTracks());
-            newPlaylist.setTracks(result.getTracks());
-            LOGGER.info("New tracks for {}", newPlaylist.getName());
-            
-            for (Track t : newPlaylist) {
-              LOGGER.info("\t{}: {}, {}", new Object[] {t.getId(), t.getArtist(), t.getFiles()});
-            }
-          }
-
-          update = false;
-
-          for (final Playlist newPlaylist : newPlaylists) {
-            broadcaster.firePlaylistUpdated(newPlaylist);
-          }
-        } catch (Exception e) {
-          LOGGER.info("Could not get hold of the Jotify instance", e);
-        } finally {
-          update = false; // Make sure we don't try again
-        }
-      }
     }
   }
 }
