@@ -5,7 +5,7 @@ import java.math.BigInteger;
 
 /**
  * Encoders and decoders for base-62 formatted data. Uses the alphabet 0..9 a..z
- * A..Z, e.g. '0' => 0, 'a' => 10, 'A' => 36 and 'Z' => 62.
+ * A..Z, e.g. '0' => 0, 'a' => 10, 'A' => 35 and 'Z' => 61.
  * 
  */
 public class Base62 {
