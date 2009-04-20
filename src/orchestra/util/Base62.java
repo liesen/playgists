@@ -17,7 +17,7 @@ public class Base62 {
    * @param key element to search for
    * @return index of key in alphabet
    */
-  private static final int getValueForByte(byte key) {
+  private static final int valueForByte(byte key) {
     if (Character.isLowerCase(key)) {
       return key - ('a' - 10);
     } else if (Character.isUpperCase(key)) {
@@ -48,10 +48,44 @@ public class Base62 {
     BigInteger multiplier = BigInteger.ONE;
 
     for (int i = bytes.length - 1; i >= 0; i--) {
-      res = res.add(multiplier.multiply(BigInteger.valueOf(getValueForByte(bytes[i]))));
+      res = res.add(multiplier.multiply(BigInteger.valueOf(valueForByte(bytes[i]))));
       multiplier = multiplier.multiply(BASE);
     }
 
     return res;
+  }
+
+  public static String encode(final BigInteger i) throws IllegalArgumentException {
+    if (i == null) {
+      throw new NullPointerException("Argument must be non-null");
+    }
+    
+    if (BigInteger.ZERO.compareTo(i) > 0) {
+      throw new IllegalArgumentException("Argument must be larger than zero");
+    }
+    
+    if (BigInteger.ZERO.compareTo(i) == 0) {
+      return "0";
+    }
+    
+    StringBuffer buf = new StringBuffer();
+    BigInteger value = i.add(BigInteger.ZERO); // Clone argument
+    
+    while (BigInteger.ZERO.compareTo(value) < 0) {
+      BigInteger[] divRem = value.divideAndRemainder(BASE);
+      int remainder = divRem[1].intValue();
+      
+      if (remainder < 10) {
+        buf.insert(0, (char) (remainder + '0'));
+      } else if (remainder < 10 + 26) {
+        buf.insert(0, (char) (remainder + 'a' - 10));
+      } else {
+        buf.insert(0, (char) (remainder + 'A' - 10 - 26));
+      }
+      
+      value = divRem[0];
+    }
+
+    return buf.toString();
   }
 }
