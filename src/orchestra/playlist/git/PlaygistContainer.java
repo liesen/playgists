@@ -14,6 +14,7 @@ import java.util.Map;
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistContainer;
 import orchestra.util.Git;
+import orchestra.util.LoggingProgressMonitor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,7 @@ import de.felixbruns.jotify.media.Track;
  * 
  */
 public class PlaygistContainer extends PlaylistContainer {
-  private static final Logger log = LoggerFactory.getLogger(PlaygistContainer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PlaygistContainer.class);
 
   private final MessageDigest messageDigest;
 
@@ -74,11 +75,14 @@ public class PlaygistContainer extends PlaylistContainer {
       head.accept(new TreeVisitor() {
         public void visitFile(FileTreeEntry f) throws IOException {
           try {
-            Playgist gist = Playgist.open(repo.getWorkDir(), new File(f.getFullName()));
-            log.info("Added playlist: {}", gist.getName());
-            addPlaygist(gist);
+            Playgist gist = Playgist.open(new File(repo.getWorkDir(), f.getFullName()));
+
+            if (gist.getName() != null) {
+              LOG.info("Added playlist: {}", gist.getName());
+              addPlaygist(gist);
+            }
           } catch (IOException e) {
-            log.info("Failed to open gist: {}", e.getMessage());
+            LOG.info("Failed to open gist: {}", e.getMessage());
           }
         }
 
@@ -107,8 +111,8 @@ public class PlaygistContainer extends PlaylistContainer {
     createFile(absolutePath);
     git.add(absolutePath);
 
-    log.info("Created new playlist at {}", absolutePath);
-    Playgist gist = Playgist.open(git.getRepository().getWorkDir(), new File(getOwner(), hash));
+    LOG.info("Created new playlist at {}", absolutePath);
+    Playgist gist = Playgist.open(absolutePath);
     gist.setName(name);
     addPlaygist(gist);
     return gist;
@@ -181,10 +185,9 @@ public class PlaygistContainer extends PlaylistContainer {
 
       try {
         git.commit("Playlist update", gist.getPath());
-        playlist.setDirty(false);
+        git.pushOriginMaster(new LoggingProgressMonitor(LOG));
       } catch (IOException e) {
-        log.warn("Failed to commit", e);
-        playlist.setDirty(true);
+        LOG.warn("Failed to commit", e);
       }
     }
   }

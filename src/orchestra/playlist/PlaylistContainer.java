@@ -41,12 +41,12 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
   }
   
   public PlaylistContainer addPlaylist(Playlist playlist) {
-    playlists.put(playlist.getId(), playlist);
+    playlists.put(playlist.getIdentifier(), playlist);
     return this;
   }
   
   public PlaylistContainer removePlaylist(Playlist playlist) {
-    playlists.remove(playlist.getId());
+    playlists.remove(playlist.getIdentifier());
     return this;
   }
   

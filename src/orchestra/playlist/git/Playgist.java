@@ -7,7 +7,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +18,10 @@ import orchestra.playlist.PlaylistListener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spearce.jgit.lib.TreeEntry;
 
 import de.felixbruns.jotify.media.Track;
 
-public class Playgist implements Playlist, Iterable<Track> {
+public class Playgist extends Playlist {
   private static final Logger LOG = LoggerFactory.getLogger(Playgist.class);
 
   public static final String METADATA_PREFIX = "> ";
@@ -32,9 +30,6 @@ public class Playgist implements Playlist, Iterable<Track> {
   private static final String NAME_PROPERTY_NAME = "name";
 
   private final Map<String, String> metadata;
-
-  /** Entry in the git tree. */
-  private TreeEntry treeEntry;
 
   /** Path to the file on disk. */
   private final File absolutePath;
@@ -60,8 +55,7 @@ public class Playgist implements Playlist, Iterable<Track> {
    * @throws FileNotFoundException
    * @throws IOException
    */
-  public static Playgist open(File workDir, File entry) throws FileNotFoundException, IOException {
-    File file = new File(workDir, entry.getPath());
+  public static Playgist open(File file) throws FileNotFoundException, IOException {
     BufferedReader reader = new BufferedReader(new FileReader(file));
     Map<String, String> metadata = new TreeMap<String, String>();
     List<Track> tracks = new LinkedList<Track>();
@@ -87,13 +81,8 @@ public class Playgist implements Playlist, Iterable<Track> {
     }
   }
 
-  public String getId() {
+  public String getIdentifier() {
     return absolutePath.getName();
-  }
-
-  /** Returns the location (on disk) for this gist. */
-  public TreeEntry getTreeEntry() {
-    return treeEntry;
   }
 
   /**
@@ -181,10 +170,6 @@ public class Playgist implements Playlist, Iterable<Track> {
 
   public List<Track> getTracks() {
     return Collections.unmodifiableList(tracks);
-  }
-
-  public Iterator<Track> iterator() {
-    return getTracks().iterator();
   }
 
   public Playlist removeTrack(Track track) {

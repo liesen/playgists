@@ -23,7 +23,7 @@ public class Maestro extends Jotify {
    * 
    */
   private Maestro(PlaylistContainer container) {
-    super();
+    super(45547);
     playlists = container;
   }
 

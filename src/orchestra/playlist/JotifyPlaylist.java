@@ -32,7 +32,7 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
 
   @Override
   public String getId() {
-    return playlist.getId();
+    return playlist.getIdentifier();
   }
 
   @Override
@@ -111,6 +111,6 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
       return false;
     }
     
-    return getId().equalsIgnoreCase(((Playlist) o).getId());
+    return getId().equalsIgnoreCase(((Playlist) o).getIdentifier());
   }
 }

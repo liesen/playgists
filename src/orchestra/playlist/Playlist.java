@@ -1,41 +1,161 @@
 package orchestra.playlist;
 
+import java.util.Iterator;
 import java.util.List;
 
 import de.felixbruns.jotify.media.Track;
 
-public interface Playlist {
-  public String getId();
 
-  public String getName();
+/**
+ * Base implementation for a playlist.
+ * 
+ */
+public abstract class Playlist implements Iterable<Track> {
+  /** Playlist display name */
+  private String name;
 
-  public Playlist setName(String name);
+  /** Author */
+  private String author;
 
-  public String getAuthor();
+  /** Indicates if the playlist is collaborative */
+  private boolean collaborative;
+  
+  /**
+   * 
+   */
+  protected Playlist() {
+  }
 
-  public Playlist setAuthor(String owner);
+  /**
+   * @param name
+   * @param author
+   */
+  public Playlist(String name, String author) {
+    this(name, author, false);
+  }
 
-  public int getRevision();
+  /**
+   * @param name
+   * @param author
+   * @param collaborative
+   */
+  public Playlist(String name, String author, boolean collaborative) {
+    this.name = name;
+    this.author = author;
+    this.collaborative = collaborative;
+  }
 
-  public boolean isCollaborative();
+  /**
+   * Returns a unique identifier for the playlist.
+   * 
+   * @return a playlist identifier
+   */
+  public abstract String getIdentifier();
 
-  public Playlist setCollaborative(boolean collaborative);
+  /**
+   * @return the display name of the playlist
+   */
+  public String getName() {
+    return name;
+  }
 
-  public boolean isDirty();
+  public Playlist setName(String name) {
+    this.name = name;
+    return this;
+  }
 
-  public Playlist setDirty(boolean dirty);
+  /**
+   * @return author of the playlist
+   */
+  public String getAuthor() {
+    return author;
+  }
 
-  public Playlist addTrack(int index, Track track);
+  public Playlist setAuthor(String author) {
+    this.author = author;
+    return this;
+  }
 
-  public Playlist addTrack(Track track);
+  /**
+   * Returns the revision of the playlist. Optional operation: throws
+   * {@link UnsupportedOperationException} if not implemented.
+   * 
+   * @return
+   */
+  public int getRevision() {
+    throw new UnsupportedOperationException();
+  }
 
-  public Playlist addTracks(List<Track> tracks);
+  public boolean isCollaborative() {
+    return collaborative;
+  }
 
-  public Playlist setTracks(List<Track> tracks);
+  public Playlist setCollaborative(boolean collaborative) {
+    this.collaborative = collaborative;
+    return this;
+  }
 
-  public Playlist removeTrack(Track track);
+  /**
+   * Adds a track at a specific index.
+   * 
+   * @param index
+   * @param track
+   * @return
+   */
+  public abstract Playlist addTrack(int index, Track track);
 
-  public Playlist removeTracks(List<Track> tracks);
+  public Playlist addTrack(Track track) {
+    return addTrack(getTracks().size(), track);
+  }
 
-  public List<Track> getTracks();
+  public Playlist addTracks(int index, List<Track> tracks) {
+    for (Track track : tracks) {
+      addTrack(index++, track);
+    }
+
+    return this;
+  }
+
+  public Playlist addTracks(List<Track> tracks) {
+    return addTracks(getTracks().size(), tracks);
+  }
+
+  /**
+   * Replaces all tracks with a list of new tracks.
+   * 
+   * @param tracks
+   * @return
+   */
+  public Playlist setTracks(List<Track> tracks) {
+    removeTracks(getTracks());
+    return addTracks(tracks);
+  }
+
+  /**
+   * Removes a track from the playlist.
+   * 
+   * @param track
+   * @return
+   */
+  // Make sure not to implement this using setTracks because of recursion
+  public abstract Playlist removeTrack(Track track);
+
+  public Playlist removeTracks(List<Track> tracks) {
+    for (Track track : tracks) {
+      removeTrack(track);
+    }
+
+    return this;
+  }
+
+  /**
+   * Returns all tracks that make up the playlist.
+   * 
+   * @return tracks in the playlist
+   */
+  public abstract List<Track> getTracks();
+
+  public Iterator<Track> iterator() {
+    return getTracks().iterator();
+  }
 }

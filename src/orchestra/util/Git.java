@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,8 +23,10 @@ import org.spearce.jgit.lib.Tree;
 import org.spearce.jgit.lib.TreeEntry;
 import org.spearce.jgit.transport.PushResult;
 import org.spearce.jgit.transport.RefSpec;
+import org.spearce.jgit.transport.RemoteConfig;
 import org.spearce.jgit.transport.RemoteRefUpdate;
 import org.spearce.jgit.transport.Transport;
+import org.spearce.jgit.transport.URIish;
 
 
 /**
@@ -42,6 +42,9 @@ public class Git {
 
   // This should go in org.spearce.jgit.lib.Constants, no?
   private static final String ORIGIN = "origin";
+
+  private static final Collection<RefSpec> MASTER_REF_SPEC =
+      Collections.singleton(new RefSpec("master"));
 
   /** git repository. */
   private final Repository repo;
@@ -157,6 +160,7 @@ public class Git {
 
     writeTree(tree); // XXX(liesen): GitIndex.writeTree?
 
+    // Create and persist the commit
     final Commit commit = new Commit(repo);
     final RefUpdate updateRef = repo.updateRef(Constants.HEAD);
 
@@ -166,7 +170,7 @@ public class Git {
 
     commit.setAuthor(new PersonIdent(repo));
     commit.setCommitter(new PersonIdent(repo));
-    commit.setMessage(message.replaceAll("\r", "\n"));
+    commit.setMessage(message);
     commit.setTree(tree);
     commit.commit();
 
@@ -175,50 +179,19 @@ public class Git {
     return updateRef.update();
   }
 
-  public List<PushResult> push(final ProgressMonitor monitor) throws IOException {
-    final List<PushResult> results = new LinkedList<PushResult>();
-
-    try {
-      // TODO(liesen): can there be more than one origin?
-      final List<Transport> transports = Transport.openAll(repo, ORIGIN);
-
-      for (final Transport tx : transports) {
-        try {
-          results.add(push(tx, monitor));
-        } finally {
-          tx.close();
-        }
-      }
-    } catch (URISyntaxException e) {
-      throw new IOException(e);
-    }
-
-    return results;
-  }
-
   /**
-   * Performs a push operation without a progress monitor.
-   * 
-   * @return
-   * @throws IOException
-   */
-  public List<PushResult> push() throws IOException {
-    return push(new NoProgressMonitor());
-  }
-
-  /**
-   * Does a push to [origin].
+   * Pushes to the "master" refspec to origin.
    * 
    * @param monitor
-   * @return
+   * @return the result of the push operation
    * @throws IOException
    */
-  public PushResult pushToOrigin(final ProgressMonitor monitor) throws IOException {
+  public PushResult pushOriginMaster(final ProgressMonitor monitor) throws IOException {
     try {
       final Transport tx = Transport.open(repo, ORIGIN);
 
       try {
-        return push(tx, monitor);
+        return pushSafe(tx, MASTER_REF_SPEC, monitor);
       } finally {
         tx.close();
       }
@@ -228,18 +201,18 @@ public class Git {
   }
 
   /**
-   * Pushes via a given {@link Transport} using {@link #defaultRefSpecs()} as
-   * specification.
+   * Pushes a collection of refspecs to a remote location via a given
+   * {@link Transport}.
    * 
    * @param tx
+   * @param specs
    * @param monitor
    * @return
    * @throws IOException
    * @throws TransportException
    */
-  private PushResult push(final Transport tx, final ProgressMonitor monitor) throws IOException,
-      TransportException {
-    final Collection<RefSpec> specs = defaultRefSpecs();
+  private PushResult push(final Transport tx, final Collection<RefSpec> specs,
+      final ProgressMonitor monitor) throws IOException, TransportException {
     final Collection<RemoteRefUpdate> updates = tx.findRemoteRefUpdatesFor(specs);
 
     for (final RemoteRefUpdate update : updates) {
@@ -250,6 +223,31 @@ public class Git {
     return tx.push(monitor, updates);
   }
 
+  /**
+   * A fuzzier version of {@link #push(Transport, Collection, ProgressMonitor)} that doesn't
+   * bail when a transfer is canceled. If a transfer is aborted, the method
+   * returns an empty {@link PushResult}.
+   * 
+   * @param tx
+   * @param specs
+   * @param monitor
+   * @return
+   * @throws IOException
+   */
+  private PushResult pushSafe(final Transport tx, Collection<RefSpec> specs,
+      final ProgressMonitor monitor) throws IOException {
+    try {
+      return push(tx, specs, monitor);
+    } catch (final TransportException e) {
+      LOG.warn("Error when pushing", e);
+      return createEmptyPushResult(tx.getURI());
+    }
+  }
+
+  /**
+   * @return <code>true</code> if the remote section of the git configuration
+   *         contains an origin sub-section
+   */
   public boolean hasRemoteOrigin() {
     return repo.getConfig().getSubsections(RepositoryConfig.REMOTE_SECTION).contains("[origin]");
   }
@@ -260,25 +258,13 @@ public class Git {
    * 
    * @return
    */
-  public String getRemoteFetchSpec() {
-    return repo.getConfig().getString(RepositoryConfig.REMOTE_SECTION, ORIGIN, "fetch");
-  }
-
-  /**
-   * Returns the default {@link RefSpec}'s (that tell how local refs should be
-   * copied to remote repositories). Tries to first figure out what the
-   * configuration says.
-   * 
-   * @return
-   */
-  private Collection<RefSpec> defaultRefSpecs() {
-    String remoteFetchSpec = getRemoteFetchSpec();
-
-    if (remoteFetchSpec == null) {
-      return Collections.emptySet();
+  public Collection<RefSpec> defaultRemoteFetchSpecs() {
+    try {
+      return new RemoteConfig(repo.getConfig(), "origin").getFetchRefSpecs();
+    } catch (URISyntaxException e) {
+      LOG.warn(e.getMessage(), e);
+      return Collections.emptyList();
     }
-
-    return Collections.singleton(new RefSpec(remoteFetchSpec));
   }
 
   /**
@@ -297,5 +283,21 @@ public class Git {
 
       tree.setId(new ObjectWriter(tree.getRepository()).writeTree(tree));
     }
+  }
+
+  /**
+   * Creates an "empty" {@link PushResult} object used instead of an exception
+   * to signal an error when pushing to the repository.
+   * 
+   * @param uri
+   * @return
+   */
+  private static final PushResult createEmptyPushResult(final URIish uri) {
+    return new PushResult() {
+      @Override
+      public URIish getURI() {
+        return uri;
+      }
+    };
   }
 }
