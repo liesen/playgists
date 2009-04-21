@@ -24,7 +24,7 @@ import org.spearce.jgit.lib.TreeEntry;
 import de.felixbruns.jotify.media.Track;
 
 public class Playgist implements Playlist, Iterable<Track> {
-  private static final Logger log = LoggerFactory.getLogger(Playgist.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Playgist.class);
 
   public static final String METADATA_PREFIX = "> ";
 
@@ -81,7 +81,6 @@ public class Playgist implements Playlist, Iterable<Track> {
       throws IOException {
     Properties props = new Properties();
     props.load(new StringReader(line.substring(METADATA_PREFIX.length())));
-    log.info("Reading property line: {}", line);
 
     for (String key : props.stringPropertyNames()) {
       metadata.put(key, props.getProperty(key));
