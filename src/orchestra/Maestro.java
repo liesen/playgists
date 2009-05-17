@@ -1,70 +1,94 @@
 package orchestra;
 
-import java.io.IOException;
+import java.net.URI;
 
+import jotify.SilentPlayer;
 import orchestra.playlist.JotifyPlaylist;
 import orchestra.playlist.Playlist;
-import orchestra.playlist.PlaylistContainer;
 import orchestra.playlist.git.PlaygistContainer;
 import orchestra.util.Git;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.felixbruns.jotify.Jotify;
-import de.felixbruns.jotify.media.Playlists;
+import de.felixbruns.jotify.JotifyPool;
+import de.felixbruns.jotify.media.PlaylistContainer;
+import de.felixbruns.jotify.media.Track;
+import de.felixbruns.jotify.player.PlaybackListener;
+import de.felixbruns.jotify.player.Player;
 
-public class Maestro extends Jotify {
+public class Maestro extends JotifyPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(Maestro.class);
 
-  private PlaylistContainer playlists;
+  private PlaygistContainer playgists;
+  
+  private final Player silentMusicPlayer = new SilentPlayer();
+  
+  private boolean canPlayMusic = true;
 
   /**
    * 
    */
-  private Maestro(PlaylistContainer container) {
-    super(45547);
-    playlists = container;
+  private Maestro(PlaygistContainer container) {
+    super(4);
+    playgists = container;
   }
 
   public static Maestro newInstance(String username, Git git) throws Exception {
-    PlaylistContainer playlists = PlaygistContainer.open(username, git);
+    PlaygistContainer playlists = PlaygistContainer.open(username, git);
+    LOGGER.info("Using playgist container: {}", playlists.getPlaylists());
+    
     return new Maestro(playlists);
   }
-
-  public PlaylistContainer getPlaylistContainer() throws IOException {
-    return playlists;
-  }
-
+  
   @Override
-  public Playlists playlists() {
-    Playlists pls = super.playlists();
-
-    for (Playlist pl : playlists) {
-      // Add new playlists first since Jotify stops updating playlists if one
-      // update fails
-      pls.getPlaylists().add(0, new JotifyPlaylist(pl));
+  public void play(Track track, PlaybackListener listener) {
+    if (canPlayMusic) {
+      try {
+        super.play(track, listener);
+        return;
+      } catch (Exception e) {
+        canPlayMusic = false;
+      }
     }
-
-    return pls;
+    
+    silentMusicPlayer.play(track, listener);
   }
 
   @Override
-  public de.felixbruns.jotify.media.Playlist playlist(String id, boolean useCache) {
+  public de.felixbruns.jotify.media.Playlist playlist(String id) {
     LOGGER.info("Fetching playlist: {}", id);
 
-    // TODO(liesen): This is kind of not the way we'd want to distinguish
-    // between types of playlists
-    if (id.length() == 40) {
-      Playlist playgist = playlists.getPlaylist(id);
+    try {
+      URI identifier = URI.create(id); 
+      
+      if (identifier.getScheme().equals("orchestra")) {
+        Playlist playgist = playgists.getPlaylist(identifier);
 
-      if (playgist != null) {
-        return new JotifyPlaylist(playgist);
+        if (playgist != null) {
+          return new JotifyPlaylist(playgist);
+        }
+
+        return null; // Otherwise Jotify fails
       }
-
-      return null; // Otherwise Jotify fails
+    } catch (IllegalArgumentException e) {
+      LOGGER.info("Failed creating a URI from the playlist ID", e);
     }
 
-    return super.playlist(id, useCache);
+    return super.playlist(id);
+  }
+
+  @Override
+  public PlaylistContainer playlists() {
+    PlaylistContainer playlists = super.playlists();
+
+    for (Playlist pl : playgists) {
+      // Add new playlists first since Jotify stops updating playlists if one
+      // update fails
+      playlists.getPlaylists().add(0, new JotifyPlaylist(pl));
+      LOGGER.info("Added {}", pl.getName());
+    }
+    
+    return playlists;
   }
 }
