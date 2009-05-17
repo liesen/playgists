@@ -7,7 +7,7 @@
 	<classpathentry kind="lib" path="/Users/liesen/code/third_party/slf4j-1.5.6/slf4j-simple-1.5.6.jar"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/sandbox/egit/jgit.jar" sourcepath="/Users/liesen/code/sandbox/egit/org.spearce.jgit/src"/>
 	<classpathentry kind="lib" path="/Users/liesen/code/sandbox/egit/org.spearce.jgit/lib/jsch-0.1.37.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/JotifyGUI"/>
 	<classpathentry kind="con" path="org.testng.TESTNG_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/Jotify"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

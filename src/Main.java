@@ -27,7 +27,7 @@ public class Main {
 
   static class LoggingPlaylistListener implements PlaylistListener {
     public void playlistAdded(Playlist playlist) {
-      LOGGER.info("Adding playlist '{}'", playlist.getName());
+      LOGGER.info("Playlist added: {}", playlist.getName());
     }
 
     public void playlistRemoved(Playlist playlist) {
@@ -37,7 +37,7 @@ public class Main {
     }
 
     public void playlistUpdated(Playlist playlist) {
-      LOGGER.info("Playlist '{}' updated", playlist.getName());
+      LOGGER.info("Playlist update: {}", playlist.getName());
     }
   }
 }

@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spearce.jgit.lib.Constants;
 import org.spearce.jgit.lib.FileTreeEntry;
-import org.spearce.jgit.lib.PersonIdent;
 import org.spearce.jgit.lib.Repository;
 import org.spearce.jgit.lib.SymlinkTreeEntry;
 import org.spearce.jgit.lib.Tree;
@@ -101,7 +100,7 @@ public class PlaygistContainer extends PlaylistContainer {
   @Override
   public Playlist createPlaylist(String name) throws Exception {
     String hash = getNextHash();
-    String repoRelativePath = new File(getOwner(), hash).getPath();
+    String repoRelativePath = new File(getAuthor(), hash).getPath();
     File absolutePath = new File(git.getRepository().getWorkDir(), repoRelativePath);
 
     if (absolutePath.exists()) {
@@ -109,6 +108,7 @@ public class PlaygistContainer extends PlaylistContainer {
     }
 
     createFile(absolutePath);
+    LOG.info("Adding new playlist at {}", absolutePath);
     git.add(absolutePath);
 
     LOG.info("Created new playlist at {}", absolutePath);
@@ -148,28 +148,14 @@ public class PlaygistContainer extends PlaylistContainer {
   }
 
   /**
-   * @return the path to this container's owner
-   */
-  private File getOwnerRoot() {
-    return new File(git.getRepository().getWorkDir(), getOwner());
-  }
-
-  /**
-   * @return {@link PersonIdent} of the repository owner.
-   */
-  private PersonIdent getOwnerIdent() {
-    return new PersonIdent(git.getRepository());
-  }
-
-  /**
    * @return
    * @throws Exception
    */
   private String getNextHash() throws Exception {
     // TODO(liesen): this is a insufficient method for generating a playlist id
-    String filename = String.format("%s-%d", getOwner(), size());
+    String filename = String.format("%s-%d", getAuthor(), size());
     byte[] digest = messageDigest.digest(filename.getBytes(Charset.forName("UTF-8")));
-    String hash = String.format("%040x", new BigInteger(1, digest));
+    String hash = String.format("%x", new BigInteger(1, digest));
     return hash;
   }
 
@@ -185,7 +171,10 @@ public class PlaygistContainer extends PlaylistContainer {
 
       try {
         git.commit("Playlist update", gist.getPath());
-        git.pushOriginMaster(new LoggingProgressMonitor(LOG));
+        
+        if (git.hasRemoteOrigin()) {
+          git.pushOriginMaster(new LoggingProgressMonitor(LOG));
+        }
       } catch (IOException e) {
         LOG.warn("Failed to commit", e);
       }

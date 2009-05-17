@@ -32,7 +32,13 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
 
   @Override
   public String getId() {
-    return playlist.getIdentifier();
+    return playlist.getIdentifier().toString();
+  }
+
+  @Override
+  public void setId(String id) {
+    // What? NO!
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -71,19 +77,8 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
   }
 
   @Override
-  public void setChecksum(long checksum) {
-    // throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void setCollaborative(boolean collaborative) {
     playlist.setCollaborative(collaborative);
-  }
-
-  @Override
-  public void setId(String id) {
-    // What? NO!
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -100,17 +95,13 @@ public class JotifyPlaylist extends de.felixbruns.jotify.media.Playlist {
   public void setTracks(List<Track> tracks) {
     playlist.setTracks(tracks);
   }
-  
+
   @Override
   public boolean equals(Object o) {
-    if (o == this) {
-      return true;
-    }
-    
     if (!(o instanceof Playlist)) {
       return false;
     }
-    
-    return getId().equalsIgnoreCase(((Playlist) o).getIdentifier());
+
+    return o == this || playlist.getIdentifier().equals(((Playlist) o).getIdentifier());
   }
 }

@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -15,15 +16,9 @@ import java.util.TreeMap;
 
 import orchestra.playlist.Playlist;
 import orchestra.playlist.PlaylistListener;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import de.felixbruns.jotify.media.Track;
 
 public class Playgist extends Playlist {
-  private static final Logger LOG = LoggerFactory.getLogger(Playgist.class);
-
   public static final String METADATA_PREFIX = "> ";
 
   private static final String COLLABORATIVE_PROPERTY_NAME = "collaborative";
@@ -33,16 +28,24 @@ public class Playgist extends Playlist {
 
   /** Path to the file on disk. */
   private final File absolutePath;
+  
+  private final URI identifier;
 
-  private List<PlaylistListener> listeners;
+  private final List<PlaylistListener> listeners;
 
   private final List<Track> tracks;
 
   private boolean dirty;
 
   private Playgist(File path, List<Track> tracks, Map<String, String> metadata) {
+    super(metadata.get(NAME_PROPERTY_NAME), "<Unknown author>");
+    
+    super.setCollaborative(metadata.containsKey(COLLABORATIVE_PROPERTY_NAME)
+        && metadata.get(COLLABORATIVE_PROPERTY_NAME).equalsIgnoreCase("true"));
+    
     this.metadata = metadata;
     this.absolutePath = path;
+    this.identifier = URI.create("orchestra:playlist:" + path.getName());
     this.tracks = new LinkedList<Track>(tracks);
     this.listeners = new LinkedList<PlaylistListener>();
   }
@@ -81,8 +84,9 @@ public class Playgist extends Playlist {
     }
   }
 
-  public String getIdentifier() {
-    return absolutePath.getName();
+  @Override
+  public URI getIdentifier() {
+    return identifier;
   }
 
   /**
@@ -97,48 +101,36 @@ public class Playgist extends Playlist {
     return Collections.unmodifiableMap(metadata);
   }
 
-  public String getName() {
-    return metadata.get(NAME_PROPERTY_NAME);
-  }
-
+  @Override
   public Playlist setName(String name) {
+    if (name == null) {
+      throw new IllegalArgumentException("New name can not be null");
+    }
+    
     String currentName = getName();
 
     if (currentName == null || !currentName.equals(name)) {
       metadata.put(NAME_PROPERTY_NAME, name);
+      super.setName(name);
       notifyListeners();
     }
 
     return this;
   }
 
-  public boolean isCollaborative() {
-    if (!metadata.containsKey(COLLABORATIVE_PROPERTY_NAME)) {
-      return false;
-    }
-
-    return metadata.get(COLLABORATIVE_PROPERTY_NAME).equalsIgnoreCase("true");
-  }
-
+  @Override
   public Playlist setCollaborative(boolean collaborative) {
     if (!isCollaborative() && collaborative) {
       metadata.put(COLLABORATIVE_PROPERTY_NAME, "true");
+      super.setCollaborative(true);
+      notifyListeners();
+    } else if (isCollaborative() && !collaborative) {
+      metadata.put(COLLABORATIVE_PROPERTY_NAME, "false");
+      super.setCollaborative(false);
       notifyListeners();
     }
-
+    
     return this;
-  }
-
-  public String getAuthor() {
-    throw new UnsupportedOperationException();
-  }
-
-  public Playlist setAuthor(String owner) {
-    throw new UnsupportedOperationException();
-  }
-
-  public int getRevision() {
-    throw new UnsupportedOperationException();
   }
 
   public boolean isDirty() {
@@ -150,40 +142,47 @@ public class Playgist extends Playlist {
     return this;
   }
 
+  @Override
   public Playlist addTrack(int index, Track track) {
     tracks.add(index, track);
     notifyListeners();
     return this;
   }
 
+  @Override
   public Playlist addTrack(Track track) {
     tracks.add(track);
     notifyListeners();
     return this;
   }
 
+  @Override
   public Playlist addTracks(List<Track> tracks) {
     tracks.addAll(tracks); // Batch
     notifyListeners();
     return this;
   }
 
+  @Override
   public List<Track> getTracks() {
     return Collections.unmodifiableList(tracks);
   }
 
+  @Override
   public Playlist removeTrack(Track track) {
     tracks.remove(track);
     notifyListeners();
     return this;
   }
 
+  @Override
   public Playlist removeTracks(List<Track> tracks) {
     this.tracks.removeAll(tracks);
     notifyListeners();
     return this;
   }
 
+  @Override
   public Playlist setTracks(List<Track> tracks) {
     this.tracks.clear();
     this.tracks.addAll(tracks);

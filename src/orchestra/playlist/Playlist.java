@@ -1,5 +1,6 @@
 package orchestra.playlist;
 
+import java.net.URI;
 import java.util.Iterator;
 import java.util.List;
 
@@ -7,7 +8,7 @@ import de.felixbruns.jotify.media.Track;
 
 
 /**
- * Base implementation for a playlist.
+ * Base implementation of a playlist.
  * 
  */
 public abstract class Playlist implements Iterable<Track> {
@@ -50,7 +51,7 @@ public abstract class Playlist implements Iterable<Track> {
    * 
    * @return a playlist identifier
    */
-  public abstract String getIdentifier();
+  public abstract URI getIdentifier();
 
   /**
    * @return the display name of the playlist
@@ -82,7 +83,7 @@ public abstract class Playlist implements Iterable<Track> {
    * 
    * @return
    */
-  public int getRevision() {
+  public long getRevision() {
     throw new UnsupportedOperationException();
   }
 

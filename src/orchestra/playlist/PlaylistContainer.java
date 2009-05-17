@@ -1,9 +1,11 @@
 package orchestra.playlist;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -11,24 +13,25 @@ import java.util.Map;
  * 
  */
 public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
-  private final Map<String, Playlist> playlists;
+  private final Map<URI, Playlist> playlists;
   
-  private final String owner;
+  private final String author;
   
-  public PlaylistContainer(String owner) {
-    this(owner, new HashMap<String, Playlist>());
+  public PlaylistContainer(String author) {
+    this(author, Collections.<Playlist>emptyList());
+  }
+  
+  public PlaylistContainer(String author, List<Playlist> playlists) {
+    this.author = author;
+    this.playlists = new HashMap<URI, Playlist>();
+    
+    for (final Playlist playlist : playlists) {
+      addPlaylist(playlist);
+    }
   }
 
-  /**
-   * @param playlists
-   */
-  public PlaylistContainer(String owner, Map<String, Playlist> playlists) {
-    this.owner = owner;
-    this.playlists = playlists;
-  }
-
-  public String getOwner() {
-    return owner;
+  public String getAuthor() {
+    return author;
   }
   
   /**
@@ -50,12 +53,19 @@ public class PlaylistContainer implements Iterable<Playlist>, PlaylistListener {
     return this;
   }
   
+  /**
+   * Creates a new playlist.
+   * 
+   * @param name name of the playlist
+   * @return
+   * @throws Exception
+   */
   public Playlist createPlaylist(String name) throws Exception {
     throw new UnsupportedOperationException();
   }
   
-  public Playlist getPlaylist(String id) {
-    return playlists.get(id);
+  public Playlist getPlaylist(URI identifier) {
+    return playlists.get(identifier);
   }
 
   public Collection<Playlist> getPlaylists() {
