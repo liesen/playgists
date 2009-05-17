@@ -13,7 +13,6 @@ import org.spearce.jgit.lib.Commit;
 import org.spearce.jgit.lib.Constants;
 import org.spearce.jgit.lib.GitIndex;
 import org.spearce.jgit.lib.ObjectId;
-import org.spearce.jgit.lib.ObjectWriter;
 import org.spearce.jgit.lib.PersonIdent;
 import org.spearce.jgit.lib.ProgressMonitor;
 import org.spearce.jgit.lib.RefUpdate;
@@ -43,8 +42,8 @@ public class Git {
   // This should go in org.spearce.jgit.lib.Constants, no?
   private static final String ORIGIN = "origin";
 
-  private static final Collection<RefSpec> MASTER_REF_SPEC =
-      Collections.singleton(new RefSpec("master"));
+  private static final Collection<RefSpec> MASTER_REF_SPECS =
+      Collections.singletonList(new RefSpec("master"));
 
   /** git repository. */
   private final Repository repo;
@@ -83,7 +82,7 @@ public class Git {
       return new File(file.getPath().substring(repoWorkingPath.length() + 1));
     }
 
-    throw new IllegalArgumentException(file + " not inside the repository.");
+    throw new IllegalArgumentException(file + " not inside the repository's file tree.");
   }
 
   /**
@@ -108,27 +107,30 @@ public class Git {
    * @param files
    * @throws IOException
    */
-  public void add(File... files) throws IOException {
+  public ObjectId add(File... files) throws IOException {
     final GitIndex index = repo.getIndex();
 
+    // Add files to index
     for (File file : files) {
-      GitIndex.Entry indexEntry = index.add(repo.getWorkDir(), file);
-      indexEntry.setAssumeValid(false);
+      index.add(repo.getWorkDir(), file).setAssumeValid(false);
     }
 
     index.write();
+    return index.writeTree();
   }
 
   /**
    * Commits a set of files to HEAD by first updating both the index and then
    * the tree.
    * 
-   * @param message
-   * @param files
-   * @return
+   * @param message commit message
+   * @param files files to commit
+   * @return result of commit operation
    * @throws IOException
+   * @throws IllegalArgumentException if a file is not staged in the index
    */
-  public RefUpdate.Result commit(String message, File... files) throws IOException {
+  public RefUpdate.Result commit(String message, File... files) throws IOException,
+      IllegalArgumentException {
     final Tree tree = getHeadTree();
     final GitIndex index = repo.getIndex();
     boolean writeIndex = false;
@@ -139,7 +141,10 @@ public class Git {
       // Update index
       final GitIndex.Entry indexEntry = index.getEntry(repoRelativePath);
 
-      if (indexEntry.update(file)) {
+      if (indexEntry == null) {
+        throw new IllegalArgumentException("The file '" + repoRelativePath
+            + "' is not in the index--run `git add` first");
+      } else if (indexEntry.update(file)) {
         writeIndex = true;
       }
 
@@ -158,7 +163,7 @@ public class Git {
       index.write();
     }
 
-    writeTree(tree); // XXX(liesen): GitIndex.writeTree?
+    tree.setId(index.writeTree());
 
     // Create and persist the commit
     final Commit commit = new Commit(repo);
@@ -180,7 +185,7 @@ public class Git {
   }
 
   /**
-   * Pushes to the "master" refspec to origin.
+   * Pushes to the "master" ref specs to origin.
    * 
    * @param monitor
    * @return the result of the push operation
@@ -191,7 +196,7 @@ public class Git {
       final Transport tx = Transport.open(repo, ORIGIN);
 
       try {
-        return pushSafe(tx, MASTER_REF_SPEC, monitor);
+        return pushSafe(tx, MASTER_REF_SPECS, monitor);
       } finally {
         tx.close();
       }
@@ -224,9 +229,9 @@ public class Git {
   }
 
   /**
-   * A fuzzier version of {@link #push(Transport, Collection, ProgressMonitor)} that doesn't
-   * bail when a transfer is canceled. If a transfer is aborted, the method
-   * returns an empty {@link PushResult}.
+   * A fuzzier version of {@link #push(Transport, Collection, ProgressMonitor)}
+   * that doesn't bail when a transfer is canceled. If a transfer is aborted,
+   * the method returns an empty {@link PushResult}.
    * 
    * @param tx
    * @param specs
@@ -260,28 +265,10 @@ public class Git {
    */
   public Collection<RefSpec> defaultRemoteFetchSpecs() {
     try {
-      return new RemoteConfig(repo.getConfig(), "origin").getFetchRefSpecs();
+      return new RemoteConfig(repo.getConfig(), ORIGIN).getFetchRefSpecs();
     } catch (URISyntaxException e) {
       LOG.warn(e.getMessage(), e);
       return Collections.emptyList();
-    }
-  }
-
-  /**
-   * Recursively writes a tree and its subtrees.
-   * 
-   * @param tree
-   * @throws IOException
-   */
-  private static void writeTree(Tree tree) throws IOException {
-    if (tree.getId() == null) {
-      for (TreeEntry treeEntry : tree.members()) {
-        if (treeEntry.isModified() && treeEntry instanceof Tree) {
-          writeTree((Tree) treeEntry);
-        }
-      }
-
-      tree.setId(new ObjectWriter(tree.getRepository()).writeTree(tree));
     }
   }
 
