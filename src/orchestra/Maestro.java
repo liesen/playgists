@@ -2,7 +2,6 @@ package orchestra;
 
 import java.net.URI;
 
-import jotify.SilentPlayer;
 import orchestra.playlist.JotifyPlaylist;
 import orchestra.playlist.Playlist;
 import orchestra.playlist.git.PlaygistContainer;
@@ -15,14 +14,11 @@ import de.felixbruns.jotify.JotifyPool;
 import de.felixbruns.jotify.media.PlaylistContainer;
 import de.felixbruns.jotify.media.Track;
 import de.felixbruns.jotify.player.PlaybackListener;
-import de.felixbruns.jotify.player.Player;
 
 public class Maestro extends JotifyPool {
   private static final Logger LOGGER = LoggerFactory.getLogger(Maestro.class);
 
   private PlaygistContainer playgists;
-  
-  private final Player silentMusicPlayer = new SilentPlayer();
   
   private boolean canPlayMusic = true;
 
@@ -44,15 +40,17 @@ public class Maestro extends JotifyPool {
   @Override
   public void play(Track track, PlaybackListener listener) {
     if (canPlayMusic) {
+      // Catch all exceptions when trying to play music -- somewhere an NPE is thrown :( 
       try {
         super.play(track, listener);
         return;
       } catch (Exception e) {
         canPlayMusic = false;
+        LOGGER.warn("Could not play " + track, e);
       }
+    } else {
+      LOGGER.debug("Can not play music");
     }
-    
-    silentMusicPlayer.play(track, listener);
   }
 
   @Override
@@ -80,7 +78,9 @@ public class Maestro extends JotifyPool {
 
   @Override
   public PlaylistContainer playlists() {
+    LOGGER.info("Fetching playlists from Spotify");
     PlaylistContainer playlists = super.playlists();
+    LOGGER.info("Received {} playlists", playlists.getPlaylists().size());
 
     for (Playlist pl : playgists) {
       // Add new playlists first since Jotify stops updating playlists if one
